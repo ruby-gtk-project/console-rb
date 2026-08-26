@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: console\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/GNOME/console/-/issues/\n"
-"POT-Creation-Date: 2026-04-18 16:22+0000\n"
-"PO-Revision-Date: 2026-07-16 23:23+0200\n"
+"POT-Creation-Date: 2026-08-19 12:03+0000\n"
+"PO-Revision-Date: 2026-08-25 20:07+0200\n"
 "Last-Translator: Victoria Niedzielska <victorian@gnome.org>\n"
 "Language-Team: Polish <https://l10n.gnome.org/teams/pl/>\n"
 "Language: pl\n"
@@ -42,6 +42,10 @@ msgstr "Nowe okno"
 msgid "New Tab"
 msgstr "Nowa karta"
 
+#: data/org.gnome.Console.gschema.xml.in:66
+msgid "Bypass the ‘Close Tab?’ or ‘Close Window?’ dialogues"
+msgstr "Pominięcie okien „Zamknąć kartę?” bądź „Zamknąć okno?”"
+
 #: data/org.gnome.Console.metainfo.xml.in.in:9 src/kgx-about.c:102
 msgid "Terminal Emulator"
 msgstr "Emulator terminala"
@@ -54,7 +58,8 @@ msgstr "Prosty, łatwy w użyciu emulator terminala dla środowiska GNOME."
 msgid "Terminal window"
 msgstr "Okno terminala"
 
-#: data/org.gnome.Console.metainfo.xml.in.in:621 src/kgx-about.c:166
+#: data/org.gnome.Console.metainfo.xml.in.in:651
+#: data/org.gnome.Console.metainfo.xml.in.in:653 src/kgx-about.c:166
 msgid "The GNOME Project"
 msgstr "Projekt GNOME"
 
@@ -274,7 +279,7 @@ msgstr "%i kolumn %i wierszy"
 #. * this string will only be seen when the running program has
 #. * failed to set a title, and exists purely to avoid blank tabs
 #.
-#: src/kgx-pages.c:508
+#: src/kgx-pages.c:513
 #, c-format
 msgid "Tab %i"
 msgstr "Karta %i"
