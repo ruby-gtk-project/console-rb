@@ -4,21 +4,22 @@
 # Марко Костић <marko.m.kostic@gmail.com>, 2020-2026.
 # Мирослав Николић <miroslavnikolic@rocketmail.com>, 2021.
 # Душан Симић <dusan.simic1810@gmail.com>, 2024.
-# aceydot <aceydot@tuta.io>, 2025.
+# aceydot <aceydot@proton.me>, 2025.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: kgx master\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/GNOME/console/-/issues/\n"
-"POT-Creation-Date: 2026-03-16 01:41+0000\n"
-"PO-Revision-Date: 2026-04-10 17:22+0200\n"
+"POT-Creation-Date: 2026-08-19 12:03+0000\n"
+"PO-Revision-Date: 2026-08-29 20:00+0200\n"
 "Last-Translator: Марко Костић <marko.m.kostic@gmail.com>\n"
 "Language-Team: Serbian <gnome-sr@googlegroups.com>\n"
 "Language: sr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=n==1? 3 : n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"Plural-Forms: nplurals=4; plural=n==1? 3 : n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
 "X-Generator: Poedit 3.9\n"
 "X-DL-Lang: sr\n"
 "X-DL-Module: console\n"
@@ -26,7 +27,8 @@ msgstr ""
 "X-DL-Domain: po\n"
 "X-DL-State: Translating\n"
 
-#: data/org.gnome.Console.desktop.in.in:2 data/org.gnome.Console.metainfo.xml.in.in:8 src/kgx-application.h:26 src/kgx-window.ui:52
+#: data/org.gnome.Console.desktop.in.in:2 data/org.gnome.Console.metainfo.xml.in.in:8
+#: src/kgx-application.h:26 src/kgx-window.ui:52
 msgid "Console"
 msgstr "Конзола"
 
@@ -35,7 +37,8 @@ msgstr "Конзола"
 msgid "command;prompt;cmd;commandline;run;shell;terminal;kgx;kings cross;"
 msgstr ""
 "command;prompt;cmd;commandline;run;shell;terminal;kgx;kings "
-"cross;команда;наредба;линија;цмд;командлајн;покрени;шел;шкољка;терминал;кгџ;краљев крст;"
+"cross;команда;наредба;линија;цмд;командлајн;покрени;шел;шкољка;терминал;кгџ;краљев "
+"крст;"
 
 #: data/org.gnome.Console.desktop.in.in:20
 msgid "New Window"
@@ -44,6 +47,10 @@ msgstr "Нови прозор"
 #: data/org.gnome.Console.desktop.in.in:26 src/kgx-window.ui:246
 msgid "New Tab"
 msgstr "Нови језичак"
+
+#: data/org.gnome.Console.gschema.xml.in:66
+msgid "Bypass the ‘Close Tab?’ or ‘Close Window?’ dialogues"
+msgstr "Заобиђи дијалоге „Затвори језичак?“ или „Затвори прозор?“"
 
 #: data/org.gnome.Console.metainfo.xml.in.in:9 src/kgx-about.c:102
 msgid "Terminal Emulator"
@@ -57,7 +64,8 @@ msgstr "Једноставан опонашавач терминала за Гн
 msgid "Terminal window"
 msgstr "Прозор терминала"
 
-#: data/org.gnome.Console.metainfo.xml.in.in:621 src/kgx-about.c:166
+#: data/org.gnome.Console.metainfo.xml.in.in:651
+#: data/org.gnome.Console.metainfo.xml.in.in:653 src/kgx-about.c:166
 msgid "The GNOME Project"
 msgstr "Гном пројекат"
 
@@ -85,7 +93,7 @@ msgstr ""
 "Марко Костић <marko.m.kostic@gmail.com>\n"
 "Мирослав Николић <miroslavnikolic@rocketmail.com>\n"
 "Душан Симић <dusan.simic1810@gmail.com>\n"
-"aceydot <aceydot@tuta.io>\n"
+"aceydot <aceydot@proton.me>\n"
 "Превод Гнома на српски језик https://гном.срб"
 
 #: src/kgx-application.c:289
@@ -152,24 +160,48 @@ msgid "Close Window?"
 msgstr "Да затворим прозор?"
 
 #: src/kgx-close-dialog.c:75
-msgid "A command is still running, closing this window will kill it and may lead to unexpected outcomes"
-msgid_plural "Some commands are still running, closing this window will kill them and may lead to unexpected outcomes"
-msgstr[0] "Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може довести до неочекиваних исхода"
-msgstr[1] "Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може довести до неочекиваних исхода"
-msgstr[2] "Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може довести до неочекиваних исхода"
-msgstr[3] "Наредба се идаље извршава, затварање овог прозора ће је окончати и то може довести до неочекиваних исхода"
+msgid ""
+"A command is still running, closing this window will kill it and may lead to "
+"unexpected outcomes"
+msgid_plural ""
+"Some commands are still running, closing this window will kill them and may lead "
+"to unexpected outcomes"
+msgstr[0] ""
+"Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може "
+"довести до неочекиваних исхода"
+msgstr[1] ""
+"Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може "
+"довести до неочекиваних исхода"
+msgstr[2] ""
+"Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може "
+"довести до неочекиваних исхода"
+msgstr[3] ""
+"Наредба се идаље извршава, затварање овог прозора ће је окончати и то може довести "
+"до неочекиваних исхода"
 
 #: src/kgx-close-dialog.c:82
 msgid "Close Tab?"
 msgstr "Да затворим језичак?"
 
 #: src/kgx-close-dialog.c:84
-msgid "A command is still running, closing this tab will kill it and may lead to unexpected outcomes"
-msgid_plural "Some commands are still running, closing this tab will kill them and may lead to unexpected outcomes"
-msgstr[0] "Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може довести до неочекиваних исхода"
-msgstr[1] "Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може довести до неочекиваних исхода"
-msgstr[2] "Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може довести до неочекиваних исхода"
-msgstr[3] "Наредба се идаље извршава, затварање овог прозора ће је окончати и то може довести до неочекиваних исхода"
+msgid ""
+"A command is still running, closing this tab will kill it and may lead to "
+"unexpected outcomes"
+msgid_plural ""
+"Some commands are still running, closing this tab will kill them and may lead to "
+"unexpected outcomes"
+msgstr[0] ""
+"Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може "
+"довести до неочекиваних исхода"
+msgstr[1] ""
+"Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може "
+"довести до неочекиваних исхода"
+msgstr[2] ""
+"Неке наредбе се и даље извршавају, затварање овог прозора ће их окончати и то може "
+"довести до неочекиваних исхода"
+msgstr[3] ""
+"Наредба се идаље извршава, затварање овог прозора ће је окончати и то може довести "
+"до неочекиваних исхода"
 
 #. Translators: Screen reader label for the list of running commands
 #: src/kgx-close-dialog.c:194
@@ -177,7 +209,8 @@ msgid "Process list"
 msgstr "Списак процеса"
 
 #. Translators: This action dismisses the dialogue, leaving the tab/window open
-#: src/kgx-close-dialog.c:205 src/kgx-paste-dialog.c:135 src/preferences/kgx-font-picker.ui:22
+#: src/kgx-close-dialog.c:205 src/kgx-paste-dialog.c:135
+#: src/preferences/kgx-font-picker.ui:22
 msgid "_Cancel"
 msgstr "_Откажи"
 
@@ -190,32 +223,47 @@ msgstr "_Затвори"
 msgid "Color string is wrong length"
 msgstr "Ниска боје је погрешне дужине"
 
-#: src/kgx-drop-target.c:198 src/kgx-drop-target.c:250 src/kgx-drop-target.c:334 src/kgx-drop-target.c:368 src/kgx-drop-target.c:509
+#: src/kgx-drop-target.c:198 src/kgx-drop-target.c:250 src/kgx-drop-target.c:334
+#: src/kgx-drop-target.c:368 src/kgx-drop-target.c:509
 msgctxt "toast-message"
 msgid "Drop Failed"
 msgstr "Испуштање није успело"
 
 #: src/kgx-drop-target.c:201 src/kgx-drop-target.c:253
 msgctxt "spad-message"
-msgid "An unexpected error occurred whilst receiving a URI list drop. Please include the following information if you report the error."
-msgstr "Дошло је до неочекиване грешке приликом примања УРИ листе за испуштање. Укључите следеће информације ако пријављујете грешку."
+msgid ""
+"An unexpected error occurred whilst receiving a URI list drop. Please include the "
+"following information if you report the error."
+msgstr ""
+"Дошло је до неочекиване грешке приликом примања УРИ листе за испуштање. Укључите "
+"следеће информације ако пријављујете грешку."
 
 #: src/kgx-drop-target.c:337
 msgctxt "spad-message"
 msgid ""
-"An unexpected error occurred whilst receiving a file list drop. Please include the following information if you report the error."
+"An unexpected error occurred whilst receiving a file list drop. Please include the "
+"following information if you report the error."
 msgstr ""
-"Дошло је до неочекиване грешке приликом примања листе датотека за испуштање. Укључите следеће информације ако пријављујете грешку."
+"Дошло је до неочекиване грешке приликом примања листе датотека за испуштање. "
+"Укључите следеће информације ако пријављујете грешку."
 
 #: src/kgx-drop-target.c:371
 msgctxt "spad-message"
-msgid "An unexpected error occurred whilst receiving a text drop. Please include the following information if you report the error."
-msgstr "Дошло је до неочекиване грешке приликом примања текста за испуштање. Укључите следеће информације ако пријављујете грешку."
+msgid ""
+"An unexpected error occurred whilst receiving a text drop. Please include the "
+"following information if you report the error."
+msgstr ""
+"Дошло је до неочекиване грешке приликом примања текста за испуштање. Укључите "
+"следеће информације ако пријављујете грешку."
 
 #: src/kgx-drop-target.c:512
 msgctxt "spad-message"
-msgid "An unexpected value was received. Please include the following information if you report the error."
-msgstr "Примљена је неочекивана вредност. Укључите следеће информације ако пријављујете грешку."
+msgid ""
+"An unexpected value was received. Please include the following information if you "
+"report the error."
+msgstr ""
+"Примљена је неочекивана вредност. Укључите следеће информације ако пријављујете "
+"грешку."
 
 #: src/kgx-livery-manager.c:193
 msgctxt "livery-name"
@@ -242,7 +290,7 @@ msgstr "%i колона %i редова"
 #. * this string will only be seen when the running program has
 #. * failed to set a title, and exists purely to avoid blank tabs
 #.
-#: src/kgx-pages.c:508
+#: src/kgx-pages.c:513
 #, c-format
 msgid "Tab %i"
 msgstr "Језичак %i"
@@ -353,17 +401,22 @@ msgstr "Не могу да отворим везу"
 #: src/kgx-terminal.c:360
 #, c-format
 msgctxt "spad-message"
-msgid "The link “<a href=\"%s\">%s</a>” uses the protocol “%s”, for which no apps are installed."
-msgstr "Веза „<a href=„%s“>%s</a>“ користи протокол „%s“, за који није инсталиран ниједан програм."
+msgid ""
+"The link “<a href=\"%s\">%s</a>” uses the protocol “%s”, for which no apps are "
+"installed."
+msgstr ""
+"Веза „<a href=„%s“>%s</a>“ користи протокол „%s“, за који није инсталиран ниједан "
+"програм."
 
 #: src/kgx-terminal.c:373
 #, c-format
 msgctxt "spad-message"
 msgid ""
-"An unexpected error occurred whilst opening the link “<a href=\"%s\">%s</a>”. Please include the following information if you report "
-"the error."
+"An unexpected error occurred whilst opening the link “<a href=\"%s\">%s</a>”. "
+"Please include the following information if you report the error."
 msgstr ""
-"Дошло је до неочекиване грешке приликом отварања везе „<a href=„%s“ >%s</a>“. Укључите следеће информације ако пријављујете грешку."
+"Дошло је до неочекиване грешке приликом отварања везе „<a href=„%s“ >%s</a>“. "
+"Укључите следеће информације ако пријављујете грешку."
 
 #: src/kgx-terminal.c:421
 #, c-format
@@ -390,8 +443,12 @@ msgstr "Не могу да налепим текст"
 
 #: src/kgx-terminal.c:514
 msgctxt "spad-message"
-msgid "An unexpected error occurred whilst reading the clipboard. Please include the following information if you report the error."
-msgstr "Дошло је до неочекиване грешке приликом читања клипборда. Укључите следеће информације ако пријављујете грешку."
+msgid ""
+"An unexpected error occurred whilst reading the clipboard. Please include the "
+"following information if you report the error."
+msgstr ""
+"Дошло је до неочекиване грешке приликом читања клипборда. Укључите следеће "
+"информације ако пријављујете грешку."
 
 #: src/kgx-terminal.c:575
 msgctxt "toast-message"
@@ -400,8 +457,12 @@ msgstr "Не могу да прикажем датотеку"
 
 #: src/kgx-terminal.c:578
 msgctxt "spad-message"
-msgid "An unexpected error occurred whilst showing the file. Please include the following information if you report the error."
-msgstr "Дошло је до неочекиване грешке приликом приказивања датотеке. Укључите следеће информације ако пријављујете грешку."
+msgid ""
+"An unexpected error occurred whilst showing the file. Please include the following "
+"information if you report the error."
+msgstr ""
+"Дошло је до неочекиване грешке приликом приказивања датотеке. Укључите следеће "
+"информације ако пријављујете грешку."
 
 #: src/kgx-terminal.c:599
 msgctxt "toast-message"
@@ -410,8 +471,12 @@ msgstr "Не могу да отворим фасциклу"
 
 #: src/kgx-terminal.c:602
 msgctxt "spad-message"
-msgid "An unexpected error occurred whilst opening the folder. Please include the following information if you report the error."
-msgstr "Дошло је до неочекиване грешке приликом отварања фасцикле. Укључите следеће информације ако пријављујете грешку."
+msgid ""
+"An unexpected error occurred whilst opening the folder. Please include the "
+"following information if you report the error."
+msgstr ""
+"Дошло је до неочекиване грешке приликом отварања фасцикле. Укључите следеће "
+"информације ако пријављујете грешку."
 
 #: src/kgx-terminal.c:696
 #, c-format
@@ -429,8 +494,12 @@ msgstr "Не могу да налепим"
 
 #: src/kgx-terminal.c:987
 msgctxt "spad-message"
-msgid "An unexpected error occurred whilst processing the clipboard. Please include the following information if you report the error."
-msgstr "Дошло је до неочекиване грешке приликом обраде клипборда. Укључите следеће информације ако пријављујете грешку."
+msgid ""
+"An unexpected error occurred whilst processing the clipboard. Please include the "
+"following information if you report the error."
+msgstr ""
+"Дошло је до неочекиване грешке приликом обраде клипборда. Укључите следеће "
+"информације ако пријављујете грешку."
 
 #: src/kgx-terminal.ui:7
 msgid "_Open Link"
