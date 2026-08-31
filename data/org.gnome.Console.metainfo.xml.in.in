@@ -27,6 +27,28 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="51~rc" date="2026-08-31" type="development">
+      <description>
+        <p>New Translations:</p>
+        <ul>
+          <li>Norwegian Nynorsk</li>
+        </ul>
+        <p>Updated Translations:</p>
+        <ul>
+          <li>Basque</li>
+          <li>Czech</li>
+          <li>French</li>
+          <li>Galician</li>
+          <li>Hebrew</li>
+          <li>Kazakh</li>
+          <li>Lithuanian</li>
+          <li>Polish</li>
+          <li>Serbian</li>
+          <li>Swedish</li>
+          <li>Turkish</li>
+        </ul>
+      </description>
+    </release>
     <release version="51~beta" date="2026-08-19" type="development">
       <description>
         <p>New Translations:</p>
