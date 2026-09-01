@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: console master\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/GNOME/console/-/issues/\n"
-"POT-Creation-Date: 2025-12-28 14:23+0000\n"
-"PO-Revision-Date: 2026-02-21 18:15+0100\n"
+"POT-Creation-Date: 2026-08-31 02:34+0000\n"
+"PO-Revision-Date: 2026-09-01 20:12+0200\n"
 "Last-Translator: Balázs Úr <ur.balazs at fsf dot hu>\n"
 "Language-Team: Hungarian <openscope at fsf dot hu>\n"
 "Language: hu\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Lokalize 25.08.1\n"
+"X-Generator: Lokalize 25.12.3\n"
 
 #: data/org.gnome.Console.desktop.in.in:2
 #: data/org.gnome.Console.metainfo.xml.in.in:8 src/kgx-application.h:26
@@ -39,6 +39,11 @@ msgstr "Új ablak"
 msgid "New Tab"
 msgstr "Új lap"
 
+#: data/org.gnome.Console.gschema.xml.in:66
+msgid "Bypass the ‘Close Tab?’ or ‘Close Window?’ dialogues"
+msgstr ""
+"A „Bezárja a lapot?” vagy a „Bezárja az ablakot?” párbeszédablakok megkerülése"
+
 #: data/org.gnome.Console.metainfo.xml.in.in:9 src/kgx-about.c:102
 msgid "Terminal Emulator"
 msgstr "Terminálemulátor"
@@ -51,7 +56,8 @@ msgstr "Egy egyszerű, felhasználóbarát terminálemulátor a GNOME asztalhoz.
 msgid "Terminal window"
 msgstr "Terminálablak"
 
-#: data/org.gnome.Console.metainfo.xml.in.in:564 src/kgx-about.c:166
+#: data/org.gnome.Console.metainfo.xml.in.in:673
+#: data/org.gnome.Console.metainfo.xml.in.in:675 src/kgx-about.c:166
 msgid "The GNOME Project"
 msgstr "A GNOME projekt"
 
@@ -262,7 +268,7 @@ msgstr "%i oszlop, %i sor"
 #. * this string will only be seen when the running program has
 #. * failed to set a title, and exists purely to avoid blank tabs
 #.
-#: src/kgx-pages.c:508
+#: src/kgx-pages.c:513
 #, c-format
 msgid "Tab %i"
 msgstr "%i. lap"
@@ -617,7 +623,6 @@ msgid "Custom _Font"
 msgstr "_Egyéni betűkészlet"
 
 #: src/preferences/kgx-preferences-window.ui:61
-#| msgid "Behaviour"
 msgid "Behavior"
 msgstr "Viselkedés"
 
@@ -726,13 +731,11 @@ msgid "Switch to Tab 10"
 msgstr "Váltás a 10. lapra"
 
 #: src/shortcuts-dialog.ui:116
-#| msgid "New Window"
 msgctxt "shortcut window"
 msgid "Window"
 msgstr "Ablak"
 
 #: src/shortcuts-dialog.ui:119
-#| msgid "_Fullscreen"
 msgctxt "shortcut window"
 msgid "Fullscreen"
 msgstr "Teljes képernyő"
