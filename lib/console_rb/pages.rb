@@ -44,6 +44,7 @@ module ConsoleRb
           refresh(tab)
           tab_view.selected_page = page
           tab.start
+          tab.focus
         end
       end
     end
@@ -88,6 +89,7 @@ module ConsoleRb
       @on_status_change.call
       tab_view.selected_page&.needs_attention = false
       @on_search_change.call(selected_tab&.search_mode_enabled || false)
+      selected_tab&.focus unless selected_tab&.search_mode_enabled
     end
 
     def pages_changed

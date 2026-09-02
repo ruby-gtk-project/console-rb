@@ -176,8 +176,13 @@ module ConsoleRb
 
     def search_mode_enabled=(value)
       search_bar.search_mode_enabled = value
-      search_entry.grab_focus if value
+      value ? search_entry.grab_focus : focus
     end
+
+    # Without this the window's first focusable widget — the header bar's find
+    # button — takes the focus, and typing toggles it instead of reaching the
+    # shell.
+    def focus = terminal.terminal.grab_focus
 
     # --- Widgets -------------------------------------------------------------
 

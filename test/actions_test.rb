@@ -147,6 +147,14 @@ class ActionsTest
   # --- Search --------------------------------------------------------------
 
   def define_search_steps
+    step('the terminal has focus on startup') do
+      # has_focus? also needs the toplevel to be active, which it is not under a
+      # bare Xvfb with no window manager; focus_widget is the real question.
+      window.window.focus_widget.then do |focused|
+        raise "focus is #{focused.class}" unless focused == pages.selected_tab.terminal.terminal
+      end
+    end
+
     step('win.find opens the search bar') do
       activate(:win, 'find')
       raise 'search bar closed' unless pages.selected_tab.search_mode_enabled
@@ -172,6 +180,12 @@ class ActionsTest
     step('win.find closes the search bar again') do
       activate(:win, 'find')
       raise 'search bar still open' if pages.selected_tab.search_mode_enabled
+    end
+
+    step('closing the search bar returns focus to the terminal') do
+      window.window.focus_widget.then do |focused|
+        raise "focus is #{focused.class}" unless focused == pages.selected_tab.terminal.terminal
+      end
     end
   end
 

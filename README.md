@@ -3,6 +3,8 @@
 A Ruby GTK4 port of [GNOME Console (KGX)](https://gitlab.gnome.org/GNOME/console)
 — a simple terminal emulator for casual command-line work.
 
+![console-rb running a command](docs/screenshot.png)
+
 Built on the `gtk4`, `adwaita` and `vte4` gems from
 [ruby-gnome](https://github.com/ruby-gnome/ruby-gnome), in the declarative
 memoized-widget style: every widget is a memoized method that configures itself
