@@ -1,0 +1,17 @@
+[Desktop Entry]
+Name=Console (Ruby)
+GenericName=Terminal
+Comment=A Ruby GTK4 port of GNOME Console
+Keywords=command;prompt;cmd;commandline;run;shell;terminal;kshell;ksh;
+Exec=console-rb
+Icon=utilities-terminal
+Type=Application
+Categories=GNOME;System;TerminalEmulator;
+StartupNotify=true
+Terminal=false
+DBusActivatable=true
+Actions=new-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=console-rb

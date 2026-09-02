@@ -1,0 +1,23 @@
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  Exclude:
+    - 'result/**/*'
+
+# The house style this port follows puts every widget in a memoized method and
+# every bit of configuration in a tap block, which produces long but flat
+# build/widget methods by design.
+Metrics:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 110
+
+Naming/MethodName:
+  AllowedPatterns: ['\A_\z']
+
+Naming/MethodParameterName:
+  MinNameLength: 1
