@@ -20,7 +20,12 @@ The shape of the original survives; the scaffolding around it does not.
 | `KgxCloseDialog` | `ConsoleRb::CloseDialog` |
 | `KgxEmpty`, `KgxThemeSwitcher`, `KgxFullscreenBox` | `Empty`, `ThemeSwitcher`, `FullscreenBox` |
 | `KgxDropTarget` | `ConsoleRb::DropTarget` |
-| `KgxPreferencesWindow`, `KgxFontPicker` | `ConsoleRb::PreferencesDialog` |
+| `KgxPreferencesWindow` | `ConsoleRb::PreferencesDialog` |
+| `KgxFontPicker` | `ConsoleRb::FontPicker` |
+| `KgxSpad`, `KgxSpadSource`, `KgxSystemInfo` | `ConsoleRb::Spad`, `SystemInfo` |
+| `KgxProxyInfo` | `ConsoleRb::ProxyInfo` |
+| `KgxAbout` | `ConsoleRb::AboutDialog`, `SystemInfo` |
+| `po/` (61 catalogues) | `po/`, `ConsoleRb::I18n` |
 
 Widgets are built in code rather than from `.ui` templates, following the
 declarative memoized-widget style: every widget is a memoized method that
@@ -30,111 +35,59 @@ tree.
 ### Dropped deliberately
 
 These exist in the original to work around C's lack of closures and GObject's
-lack of a value type, not because the terminal needs them:
+lack of a value type, not because the terminal needs them. No user-visible
+behaviour goes with them:
 
 - **`GTree` page registry** (`kgx_application_add_page` / `lookup_page`, with
   weak refs and a `PageDiedData` struct). `Pages` keeps a plain hash keyed by
-  widget. The `app.focus-page` action that was its only consumer is not ported;
-  nothing in the UI reaches it.
+  widget, and `app.focus-page` — the registry's only consumer — is implemented
+  as a lookup across the open windows.
 - **`KgxDepot` / `KgxDespatcher`** — async wrappers around `vte_pty_spawn_async`
   and the D-Bus `OpenURI` portal. `Tab#spawn` calls `spawn_async` directly and
   `Terminal#launch` uses `Gtk::UriLauncher`.
 - **`KGX_DEFINE_DATA` closure structs** (`PageDiedData`, `SpawnData`,
   `OpenURIData`, `ShowInData`, `StartData`) — every one is a Ruby block.
-- **`KgxSpad` / `KgxSpadSource` / `KgxSystemInfo`** — the error-report dialog
-  with attached system information. Errors surface as toasts instead.
 - **`KgxTemplated`, `kgx-*-closures.h`, `kgx-marshals.list`** — machinery for
   `.ui` template bindings, which this port does not use.
-- **`KgxFontPicker`** — a custom font-list widget. `Gtk::FontDialog` covers it.
+- **`KgxSpadSource`** — a GObject interface whose whole job is to let a signal
+  carry an error bundle up the widget tree. Replaced by a callback.
 
 ### Not ported
 
-Stated plainly so the gap is visible:
+Two things, both stated plainly rather than quietly dropped:
 
-- **`--wait`** — upstream marks it TODO and does not implement it either.
-- **Proxy environment injection** (`KgxProxyInfo`) — the child does not get
-  `http_proxy` etc. synthesised from GNOME's proxy settings.
-- **`software-flow-control`** — the setting is read but not applied. Upstream
-  clears `IXON`/`IXOFF` in a `child_setup` callback that runs between fork and
-  exec; the Ruby binding for `spawn_async` exposes no such hook.
-- **Custom liveries** (`custom-liveries`, an `a{sv}` of user-defined palettes).
-  The three built-ins are present; upstream ships no UI to create more either.
-- **Tab tear-off by dragging** to the desktop. `win.detach-tab` moves a tab to a
-  new window; dragging a tab out of the window does not.
+- **`--wait` beyond a single invocation.** The flag is implemented: the
+  application holds itself open until the tabs that invocation started have
+  exited. What is not reproduced is upstream's own TODO — it does not implement
+  `--wait` either.
+- **Tab tear-off by dragging to the desktop.** `win.detach-tab` moves a tab to a
+  new window, and `AdwTabView::create-window` is wired, but dragging a tab out of
+  the window onto the desktop is untested.
+
+Everything else in the original is present. Three items that an earlier draft of
+this file listed as "not ported" turned out to be workable and are now
+implemented — see FINDINGS.md §2, §7 and the proxy notes:
+
+- `software-flow-control` — via termios on the pty master, since `spawn_async`
+  exposes no `child_setup` hook.
+- Proxy environment injection — `org.gnome.system.proxy` mapped onto
+  `http_proxy` and friends.
+- Custom liveries — stored as JSON rather than `a{sv}`, because `GLib::Variant`
+  cannot read a vardict at all. Key-file import and export stay
+  byte-compatible with upstream.
 
 ## Ruby binding quirks
 
-Findings that cost real debugging time. The skill's `adwaita-quirks.md` covers
-namespace and constructor issues; these are additional, and one contradicts it.
+Every binding defect and gap found during the port — with reproductions,
+severities and the workaround in use — is catalogued separately in
+**[FINDINGS.md](FINDINGS.md)**. The short version: sixteen entries, of which three
+are crashes, four are outright blockers, and one (`GLib::Variant` being unable
+to read a vardict) forced a change to how a setting is stored.
 
-### `Adwaita::ApplicationWindow` is *not* broken
-
-The skill's quirks reference says to use `Gtk::ApplicationWindow` instead. With
-adwaita 4.3.8 and libadwaita 1.9.3 that advice is out of date, and following it
-is not an option here: the window needs `content=` and `add_breakpoint`, neither
-of which `Gtk::ApplicationWindow` has.
-
-### `Vte::Regex.new` cannot construct a VteRegex
-
-`Vte::Regex.new` resolves to GLib's `Regex` constructor and raises
-`TypeError: no implicit conversion of Symbol into Integer` for every argument
-shape. The real constructors are only reachable through introspection, and the
-receiver must be an *allocated* `Vte::Regex`:
-
-```ruby
-GObjectIntrospection::Repository.default
-  .find('Vte', 'Regex').methods
-  .find { |m| m.name.to_s == 'new_for_search' }
-  .invoke(Vte::Regex.allocate, [pattern, -1, flags])
-```
-
-See `lib/console_rb/regex.rb`.
-
-### `Vte::REGEX_FLAGS_DEFAULT` is missing `PCRE2_MULTILINE`
-
-VTE rejects any match regex compiled without it
-(`_vte_regex_has_multiline_compile_flag` runtime check), so `0x400` has to be
-added back by hand.
-
-### `spawn_async` takes seven arguments, and its error argument lies
-
-`spawn_async(pty_flags, working_directory, argv, envv, spawn_flags, timeout,
-cancellable)`. Passing five arguments silently rebinds them to the wrong
-parameters. The callback's third argument is a `RuntimeError` reading
-"GError parameter doesn't have a value" *on success* — a valid pid is the only
-reliable success signal.
-
-### `GSimpleAction#set_state` inside `change-state` segfaults
-
-The documented C pattern — handle `change-state`, call
-`g_simple_action_set_state` — re-enters through the introspection bindings and
-crashes the process. Two consequences:
-
-- `win.find` is a stateless action; the header bar toggle button carries the
-  state and is kept in sync from the search bar's `notify::search-mode-enabled`.
-- `app.theme` has no `change-state` handler at all. Without one, GLib updates
-  the state itself, and `notify::state` reports it back.
-
-### `GLib::Variant` cannot build a tuple, and `set_value` cannot write one
-
-`GLib::Variant.new([w, h], '(ii)')` raises `NotImplementedError`.
-`GLib::Variant.parse('(800, 600)', '(ii)')` builds one — note the argument order
-is `(text, type)` — but `Gio::Settings#set_value` re-converts it and fails
-again. `set_value_raw` is the only path that works. Reading with `get_value`
-and `to_a` is fine.
-
-### Other small ones
-
-- `Gtk::ShortcutTrigger.parse_string` is not bound. Build triggers from
-  `Gtk.accelerator_parse` + `Gtk::KeyvalTrigger.new` (`lib/console_rb/shortcuts.rb`).
-- `GLib.markup_escape_text` is not bound; `AdwActionRow` titles render as markup,
-  so escaping is done locally in `CloseDialog`.
-- `Adwaita::TabPage#title=` and `#tooltip=` reject `nil`.
-- `Gtk::Window#is_active?` does not exist; it is `#active?`.
-- `Gtk::CheckButton#group = self` trips a GTK assertion — the first button in a
-  radio group must be left ungrouped.
-- `GApplication::command-line` stops after the first handler returns, so there is
-  no signal left for a second observer to hook.
+The one that contradicts the guidance this port was written against:
+`Adwaita::ApplicationWindow` is *not* broken in adwaita 4.3.8, and is required
+here because `Gtk::ApplicationWindow` has neither `content=` nor
+`add_breakpoint`.
 
 ## Packaging
 

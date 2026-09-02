@@ -515,6 +515,49 @@ class ActionsTest
       settings.settings.set_string('custom-liveries', '{}')
     end
 
+    step('app.focus-page raises the tab with that id') do
+      activate(:win, 'new-tab')
+      pages.tabs.last.id.then do |id|
+        pages.tab_view.selected_page = pages.tab_view.get_nth_page(0)
+        activate(:app, 'focus-page', GLib::Variant.new(id, 'u'))
+        raise "selected #{pages.selected_tab.id} not #{id}" unless pages.selected_tab.id == id
+      end
+      activate(:win, 'close-tab')
+    end
+
+    step('a shell that exits closes its tab') do
+      pages.tab_count.then do |before|
+        activate(:win, 'new-tab')
+        pages.tabs.last.died(:info, 'exited')
+        raise "#{pages.tab_count} tabs, expected #{before}" unless pages.tab_count == before
+      end
+    end
+
+    step('a tab opened for a command stays after it exits') do
+      ConsoleRb::Tab.new(settings: settings, watcher: application.watcher,
+                         command: %w[true], close_on_quit: false).then do |tab|
+        pages.add(tab)
+        pages.tab_count.then do |before|
+          tab.died(:info, 'exited')
+          raise 'tab closed but should have stayed' unless pages.tab_count == before
+        end
+        pages.tab_view.close_page(pages.page_for(tab))
+      end
+    end
+
+    step('a tab reports its exit to --wait listeners') do
+      pages.selected_tab.then do |tab|
+        fired = false
+        tab.on_exit { fired = true }
+        tab.died(:info, 'test')
+        raise 'exit listener never fired' unless fired
+      end
+    end
+
+    step('--wait is parsed') do
+      raise 'not set' unless ConsoleRb::CLI.new(['--wait']).parse.options[:wait]
+    end
+
     step('--title is parsed') do
       ConsoleRb::CLI.new(['--title', 'Hello']).parse.options.then do |options|
         raise "got #{options[:title].inspect}" unless options[:title] == 'Hello'

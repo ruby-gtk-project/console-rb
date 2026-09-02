@@ -28,10 +28,15 @@ module ConsoleRb
       @close_on_quit = close_on_quit
       @status = []
       @listeners = []
+      @exit_listeners = []
       @working = true
     end
 
     def on_change(&block) = @listeners << block
+
+    # Fired once when the tab's child process has gone, which is what --wait
+    # waits on.
+    def on_exit(&block) = @exit_listeners << block
 
     def notify = @listeners.each { |listener| listener.call(self) }
 
@@ -108,7 +113,9 @@ module ConsoleRb
     end
 
     def failed_to_start
-      died(:error, format(_('<b>Failed to start</b> — %s'), _('the shell could not be spawned')))
+      died(:error,
+           format(_('<b>Failed to start</b> — %s'), _('the shell could not be spawned')),
+           success: false)
     end
 
     def working_directory = @initial_work_dir || Dir.home
@@ -133,13 +140,19 @@ module ConsoleRb
       notify
     end
 
-    def died(type, message)
+    # `success` distinguishes a child that ran and then exited from one that never
+    # started. Only the former closes the tab, and only when this tab was opened
+    # for a plain shell rather than for an explicit command.
+    def died(type, message, success: true)
       exit_message.markup = message
       type == :error ? exit_revealer.add_css_class('error') : exit_revealer.remove_css_class('error')
       exit_revealer.reveal_child = true
       @train&.then { |train| @watcher.remove(train) }
       @train = nil
       notify
+      @exit_listeners.each(&:call)
+      @exit_listeners = []
+      @on_died&.call(self, success && @close_on_quit)
     end
 
     def child_exited(status)
@@ -350,6 +363,9 @@ module ConsoleRb
     # Pages installs a listener here so it can flash the header bar and mark the
     # tab as needing attention when it is not the visible one.
     attr_writer :on_bell
+
+    # Pages installs this to close the tab once its shell has exited.
+    attr_writer :on_died
 
     # Window listens here to keep its find button in step with the search bar.
     attr_writer :on_search_change

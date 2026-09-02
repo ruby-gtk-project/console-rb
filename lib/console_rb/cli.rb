@@ -49,6 +49,7 @@ module ConsoleRb
         parser.on('--version', 'Print the version and exit') { @options[:version] = true }
         parser.on('--about', 'Print the logo and exit') { @options[:about] = true }
         parser.on('--tab', 'Open a tab in the existing window') { @options[:tab] = true }
+        parser.on('--wait', 'Wait until the child exits') { @options[:wait] = true }
         parser.on('-e', '--command COMMAND',
                   'Execute the argument to this option inside the terminal') do |value|
           @options[:command] = Shellwords.split(value)

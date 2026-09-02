@@ -34,6 +34,7 @@ rake schema      # compile the GSettings schema into data/schemas
 console-rb [OPTION…] [-e|-- COMMAND [ARGUMENT…]]
 
   --tab                        open a tab in the running window
+  --wait                       wait until the child exits
   -e, --command COMMAND        run COMMAND instead of the shell
   --working-directory DIRNAME  start in DIRNAME
   -T, --title TITLE            set the initial window title
@@ -65,7 +66,8 @@ Tabs with an overview and tear-off, search, link detection and opening, "show in
 files", drag-and-drop of files onto the prompt, a paste confirmation for
 multi-line `sudo` commands, light/dark/system theming, three colour palettes,
 configurable font, scrollback and bell, and header-bar tinting for root, remote
-and container sessions.
+and container sessions. Fully translated — the 61 catalogues from GNOME Console
+apply unchanged.
 
 ## Layout
 
@@ -86,12 +88,16 @@ data/                   GSettings schema, stylesheet, desktop file
 test/                   integration and action suites
 ```
 
-`PORTING.md` records what changed from the C original, what was deliberately
-left out, and the Ruby binding quirks worth knowing about.
+`PORTING.md` records what changed from the C original and what was deliberately
+left out. `FINDINGS.md` catalogues the sixteen defects and gaps found in the
+Ruby GNOME bindings along the way, each with a reproduction and the workaround
+in use.
 
 ## Tests
 
 ```sh
+rake locale   # compile the 61 message catalogues
+rake schema   # compile the GSettings schema
 rake test     # both suites; needs a display (Xvfb is fine)
 rake lint
 ```

@@ -41,6 +41,7 @@ module ConsoleRb
           tab.on_change { refresh(tab) }
           tab.on_bell = -> { rang(tab, page) }
           tab.on_search_change = ->(enabled) { @on_search_change.call(enabled) }
+          tab.on_died = ->(dead, should_close) { tab_died(dead, should_close) }
           refresh(tab)
           tab_view.selected_page = page
           tab.start
@@ -54,6 +55,11 @@ module ConsoleRb
     def page_for(tab) = @tabs.dig(tab.root, :page)
 
     def selected_tab = tab_for(tab_view.selected_page)
+
+    def focus(tab)
+      page_for(tab)&.then { |page| tab_view.selected_page = page }
+      tab.focus
+    end
 
     def tab_count = tab_view.n_pages
 
@@ -77,6 +83,12 @@ module ConsoleRb
         elsif tab.status.include?(:remote) then 'network-server-symbolic'
         end
       icon_name && Gio::ThemedIcon.new(icon_name)
+    end
+
+    # A shell that exited on its own takes its tab with it, matching upstream.
+    # A tab opened for an explicit command stays, showing the read-only banner.
+    def tab_died(tab, should_close)
+      page_for(tab)&.then { |page| tab_view.close_page(page) if should_close }
     end
 
     def rang(_tab, page)

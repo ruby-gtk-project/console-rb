@@ -165,8 +165,14 @@ module ConsoleRb
       end
     end
 
+    # A BoolFilter over the is-monospace property rather than a CustomFilter with
+    # a Ruby block: a CustomFilter's callback data is freed after ruby-gnome's
+    # GC table has gone at interpreter shutdown, segfaulting on exit. This is
+    # also what upstream's .ui does. See FINDINGS.md.
     def monospace_filter
-      @monospace_filter ||= Gtk::CustomFilter.new(&:monospace?)
+      @monospace_filter ||= Gtk::BoolFilter.new(
+        Gtk::PropertyExpression.new(Pango::FontFamily.gtype, nil, 'is-monospace')
+      )
     end
 
     def name_filter

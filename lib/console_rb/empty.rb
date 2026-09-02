@@ -38,7 +38,7 @@ module ConsoleRb
 
     def logo
       @logo ||= Gtk::Image.new.tap do |image|
-        image.icon_name = 'utilities-terminal-symbolic'
+        image.icon_name = "#{APPLICATION_ID}-symbolic"
         image.pixel_size = 128
         image.vexpand = true
         image.valign = :end

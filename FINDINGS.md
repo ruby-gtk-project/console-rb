@@ -265,7 +265,72 @@ and the Nix build use it. All 61 catalogues now load.
 
 ---
 
-## 11. `Adwaita::TabPage#title=` and `#tooltip=` reject nil
+## 11. Action parameters arrive unwrapped, but must be passed as Variants
+
+**trap** · `gio2`
+
+`Gio::SimpleAction`'s `activate` signal delivers a plain Ruby value for simple
+types, not the `GLib::Variant` the C API documents:
+
+```ruby
+action = Gio::SimpleAction.new('focus-page', GLib::VariantType.new('u'))
+action.signal_connect('activate') { |_act, parameter| parameter.value }
+action.activate(GLib::Variant.parse('7', 'u'))
+# NoMethodError: undefined method `value' for an instance of Integer
+```
+
+Going the other way is asymmetric: `Action#activate` and `#change_state` both
+require an actual `GLib::Variant`. `SimpleAction#state` reads back unwrapped
+too.
+
+This one is dangerous rather than merely annoying, because of §1: the
+`NoMethodError` raised inside the handler unwinds through GObject's signal
+emission and takes the process down with a core dump, several steps later and
+nowhere near the actual mistake. What looks like a crash in unrelated widget
+code is a typo in a signal handler.
+
+**Workaround (implemented).** `Application#unwrap` coerces either shape, and is
+used everywhere an action parameter or state is read.
+
+---
+
+## 12. `Gtk::CustomFilter` segfaults at interpreter shutdown
+
+**crash** · `gobject-introspection`, `glib2`
+
+A `Gtk::CustomFilter` built from a Ruby block dies when GTK disposes it during
+interpreter teardown — after ruby-gnome's GC marker table has already gone:
+
+```
+[BUG] Segmentation fault
+g_hash_table_lookup
+rbg_gc_marker_unguard          (glib2.so)
+rb_gi_callback_data_free       (gobject_introspection.so)
+gtk_custom_filter_dispose
+gtk_multi_filter_dispose
+```
+
+It is intermittent and happens *after* the program's work is complete, so it
+presents as a clean run that nonetheless exits with a core dump — easy to
+mistake for a flaky test rather than a binding defect.
+
+**Workaround (implemented).** Express the predicate as a `Gtk::BoolFilter` over
+a `Gtk::PropertyExpression` instead, so no Ruby callback is involved. In this
+port that is the monospace test in the font picker
+(`lib/console_rb/font_picker.rb`) — which is also what upstream's `.ui` does:
+
+```ruby
+Gtk::BoolFilter.new(
+  Gtk::PropertyExpression.new(Pango::FontFamily.gtype, nil, 'is-monospace')
+)
+```
+
+Any callback-carrying GTK object built from a Ruby block is suspect here; prefer
+an expression when the binding offers one.
+
+---
+
+## 13. `Adwaita::TabPage#title=` and `#tooltip=` reject nil
 
 **trap** · `adwaita`
 
@@ -281,7 +346,7 @@ therefore crashes on its first refresh.
 
 ---
 
-## 12. GObject-Introspection re-registers cairo's types without `GI_TYPELIB_PATH`
+## 14. GObject-Introspection re-registers cairo's types without `GI_TYPELIB_PATH`
 
 **crash** · `gobject-introspection`, packaging
 
@@ -304,7 +369,7 @@ first output is `bin`, which contains no typelibs — the path must be built fro
 
 ---
 
-## 13. The Ruby `pkg-config` gem hard-fails on any missing transitive `.pc`
+## 15. The Ruby `pkg-config` gem hard-fails on any missing transitive `.pc`
 
 **trap** · `pkg-config` 1.6.5, packaging
 
@@ -324,14 +389,13 @@ its public dependencies.
 
 ---
 
-## 14. Smaller traps
+## 16. Smaller traps
 
 | Finding | Workaround |
 |---|---|
 | `Gtk::Window#is_active?` does not exist; the binding renames it `#active?`. | Use `#active?`. |
 | `Gtk::CheckButton#group = self` trips `gtk_check_button_set_group: assertion 'self != group' failed`. The natural "build a hash of buttons, group each to the first" idiom hits this on the first button. | Leave the first button ungrouped (`lib/console_rb/theme_switcher.rb`). |
 | `GApplication::command-line` uses `g_signal_accumulator_first_wins`, so emission stops after the first handler returns — a second observer never runs, with no warning. | Do not rely on a second handler; the test suite arms a timer instead. |
-| `Gio::SimpleAction#state` returns a plain Ruby value, but `change_state` requires a `GLib::Variant`. The two directions are not symmetric. | Coerce explicitly (`Window#boolean_state`). |
 | The system `ruby` on NixOS is a `bundlerEnv` wrapper that `--set`s `BUNDLE_GEMFILE`, so it cannot be overridden from the environment and every `bundle` command targets a read-only store path. | Work inside `nix shell nixpkgs#ruby`, or unset it in the devshell hook. |
 
 ---
@@ -356,6 +420,6 @@ because it needs `:handles_command_line`, not because of any defect.
 ## Reporting
 
 None of these have been filed upstream yet. The ones worth reporting to
-[ruby-gnome](https://github.com/ruby-gnome/ruby-gnome/issues) are §1 (a crash),
-§2 and §3 (`GLib::Variant` is largely unusable for structured settings), §4, §6
-and §7 (`vte4`). §10 belongs to [ruby-gettext](https://github.com/ruby-gettext/gettext).
+[ruby-gnome](https://github.com/ruby-gnome/ruby-gnome/issues) are §1 and §12 (crashes),
+§2 and §3 (`GLib::Variant` is largely unusable for structured settings), §4, §6,
+§7, §11 and §12 (`vte4`, `gio2`, and the GC interaction). §10 belongs to [ruby-gettext](https://github.com/ruby-gettext/gettext).

@@ -74,22 +74,51 @@ module ConsoleRb
         if cli.handle_immediate { settings }
           cli.options[:error] ? 1 : 0
         else
-          open_for(cli.options, command_line.cwd)
+          open_for(cli.options, command_line.cwd).then do |tabs|
+            wait_for(command_line, tabs) if cli.options[:wait]
+          end
           0
         end
       end
     end
 
+    # `--wait` keeps the application alive until the tabs this invocation
+    # started have exited, which is what lets `console-rb --wait -e vi file`
+    # serve as an $EDITOR. Gio::ApplicationCommandLine exposes no hold/release
+    # in Ruby, so the hold is taken on the application itself and the command
+    # line's exit status is set when the last tab goes.
+    def wait_for(command_line, tabs)
+      tabs.compact.then do |pending|
+        if pending.empty?
+          command_line.exit_status = 0
+        else
+          app.hold
+          pending.each { |tab| tab.on_exit { finish_wait(command_line, pending, tab) } }
+        end
+      end
+    end
+
+    def finish_wait(command_line, pending, tab)
+      pending.delete(tab)
+      pending.empty?.then do |done|
+        if done
+          command_line.exit_status = 0
+          app.release
+        end
+      end
+    end
+
     # Positional paths each get their own tab; the first one creates the window
-    # unless --tab asked to join the existing one.
+    # unless --tab asked to join the existing one. Returns the tabs it opened so
+    # --wait has something to wait on.
     def open_for(options, cwd)
       host = options[:tab] ? @windows.last : nil
 
-      directories(options, cwd).each do |directory|
-        host = add_terminal(window: host,
-                            working_directory: directory,
-                            command: options[:command],
-                            title: options[:title]).then { @windows.last }
+      directories(options, cwd).map do |directory|
+        add_terminal(window: host,
+                     working_directory: directory,
+                     command: options[:command],
+                     title: options[:title]).tap { host = @windows.last }
       end
     end
 
@@ -134,6 +163,7 @@ module ConsoleRb
       end
 
       app.add_action(theme_action)
+      app.add_action(focus_page_action)
       settings.on_change do |key|
         refresh_zoom_actions
         sync_theme_action if key == 'theme'
@@ -153,6 +183,32 @@ module ConsoleRb
     # No change-state handler: calling set_state from inside one re-enters
     # through the bindings and segfaults, and without a handler GLib updates the
     # state itself, which notify::state then reports back to us.
+    # `app.focus-page` takes a tab id and raises the window holding it. Upstream
+    # keeps a GTree of live pages for this; a lookup across the open windows is
+    # the same thing without the weak-reference bookkeeping.
+    def focus_page_action
+      @focus_page_action ||= Gio::SimpleAction.new('focus-page', GLib::VariantType.new('u')).tap do |action|
+        action.signal_connect('activate') { |_act, parameter| focus_page(unwrap(parameter)) }
+      end
+    end
+
+    # The activate signal hands back a plain Ruby value for simple types, while
+    # Action#activate still wants a GLib::Variant going the other way. See
+    # FINDINGS.md — an exception here would unwind through GObject's signal
+    # emission and abort the process rather than raise.
+    def unwrap(parameter)
+      parameter.is_a?(GLib::Variant) ? parameter.value : parameter
+    end
+
+    def focus_page(id)
+      @windows.each do |window|
+        window.pages.tabs.find { |tab| tab.id == id }&.then do |tab|
+          window.pages.focus(tab)
+          window.present
+        end
+      end
+    end
+
     def theme_action
       @theme_action ||= Gio::SimpleAction.new(
         'theme', GLib::VariantType.new('s'), GLib::Variant.new(settings.theme.to_s)
@@ -163,9 +219,7 @@ module ConsoleRb
       end
     end
 
-    def state_string(action)
-      action.state.then { |state| state.is_a?(GLib::Variant) ? state.get_string : state.to_s }
-    end
+    def state_string(action) = unwrap(action.state).to_s
 
     # Keeps the menu's radio selection right when the theme changes elsewhere,
     # such as from the theme switcher.

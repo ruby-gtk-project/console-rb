@@ -25,7 +25,7 @@ module ConsoleRb
         about.debug_info_filename = 'console-rb-info.txt'
         about.translator_credits = _('translator-credits')
         about.application_name = 'Console'
-        about.application_icon = 'utilities-terminal'
+        about.application_icon = APPLICATION_ID
         about.version = VERSION
         about.developer_name = 'The Ruby GTK Project'
         about.website = HOMEPAGE_URL

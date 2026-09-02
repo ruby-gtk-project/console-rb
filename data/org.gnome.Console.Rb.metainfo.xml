@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.gnome.Console.Rb</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Console (Ruby)</name>
+  <summary>Terminal emulator</summary>
+  <description>
+    <p>
+      A Ruby GTK4 port of GNOME Console. A simple, user-friendly terminal
+      emulator for casual command-line work: tabs with an overview, search,
+      link detection, drag-and-drop of files onto the prompt, light and dark
+      themes, and header-bar tinting for root, remote and container sessions.
+    </p>
+    <p>
+      This is an independent port and is not affiliated with the GNOME project.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.gnome.Console.desktop</launchable>
+  <url type="homepage">https://github.com/ruby-gtk-project/console-rb</url>
+  <url type="bugtracker">https://github.com/ruby-gtk-project/console-rb/issues</url>
+  <developer id="io.github.ruby_gtk_project">
+    <name>The Ruby GTK Project</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-09-02">
+      <description>
+        <p>First release of the Ruby port.</p>
+      </description>
+    </release>
+  </releases>
+</component>

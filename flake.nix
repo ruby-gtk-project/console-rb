@@ -137,7 +137,8 @@
           installPhase = ''
             runHook preInstall
 
-            mkdir -p $out/share/console-rb $out/share/glib-2.0/schemas $out/share/applications
+            mkdir -p $out/share/console-rb $out/share/glib-2.0/schemas $out/share/applications \
+              $out/share/dbus-1/services
             cp -r lib data po $out/share/console-rb/
             # bin/ has to sit next to lib/ for the launcher's require_relative.
             install -Dm755 bin/console-rb $out/share/console-rb/bin/console-rb
@@ -149,6 +150,21 @@
             # the wrapper below points at both the pre- and post-move paths.
 
             cp data/org.gnome.Console.desktop $out/share/applications/
+
+            install -Dm644 data/org.gnome.Console.Rb.metainfo.xml \
+              -t $out/share/metainfo
+            install -Dm644 data/icons/hicolor/scalable/apps/org.gnome.Console.Rb.svg \
+              -t $out/share/icons/hicolor/scalable/apps
+            install -Dm644 data/icons/hicolor/symbolic/apps/org.gnome.Console.Rb-symbolic.svg \
+              -t $out/share/icons/hicolor/symbolic/apps
+
+            substitute data/org.gnome.Console.Rb.service \
+              $out/share/dbus-1/services/org.gnome.Console.Rb.service \
+              --replace-fail '@BINDIR@' "$out/bin" || {
+                mkdir -p $out/share/dbus-1/services
+                sed "s|@BINDIR@|$out/bin|" data/org.gnome.Console.Rb.service \
+                  > $out/share/dbus-1/services/org.gnome.Console.Rb.service
+              }
 
             # -rbundler/setup puts the bundled gems on the load path, and
             # GI_TYPELIB_PATH keeps GObject-Introspection from re-registering
