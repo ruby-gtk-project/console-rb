@@ -3,6 +3,8 @@
 module ConsoleRb
   # Font, scrollback and bell preferences — the same three groups upstream ships.
   class PreferencesDialog
+    include I18n
+
     def initialize(settings:)
       @settings = settings
     end
@@ -83,7 +85,7 @@ module ConsoleRb
 
     def choose_font
       Gtk::FontDialog.new.tap do |chooser|
-        chooser.title = _('Custom Font')
+        chooser.title = _('Terminal Font')
         chooser.choose_font(dialog.root, initial_font, nil) do |source, result|
           source.choose_font_finish(result)&.then do |chosen|
             @settings.custom_font_string = chosen.to_s
@@ -189,7 +191,5 @@ module ConsoleRb
         row.use_underline = true
       end
     end
-
-    def _(text) = text
   end
 end

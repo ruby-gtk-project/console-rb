@@ -3,6 +3,8 @@
 module ConsoleRb
   # Asks before killing still-running commands, listing what would die.
   class CloseDialog
+    include I18n
+
     def initialize(context:, commands:, on_close:)
       @context = context
       @commands = commands
@@ -37,15 +39,24 @@ module ConsoleRb
       @context == :window ? _('Close Window?') : _('Close Tab?')
     end
 
+    # Upstream ships four separate strings rather than substituting the noun,
+    # and the translations are keyed on those exact msgids — so they are
+    # reproduced verbatim here rather than assembled.
     def body
-      subject = @context == :window ? _('window') : _('tab')
-
-      if @commands.length == 1
-        format(_('A command is still running, closing this %s will kill it and ' \
-                 'may lead to unexpected outcomes'), subject)
-      else
-        format(_('Some commands are still running, closing this %s will kill them ' \
-                 'and may lead to unexpected outcomes'), subject)
+      @commands.length.then do |count|
+        if @context == :window
+          n_('A command is still running, closing this window will kill it and ' \
+             'may lead to unexpected outcomes',
+             'Some commands are still running, closing this window will kill them ' \
+             'and may lead to unexpected outcomes',
+             count)
+        else
+          n_('A command is still running, closing this tab will kill it and ' \
+             'may lead to unexpected outcomes',
+             'Some commands are still running, closing this tab will kill them ' \
+             'and may lead to unexpected outcomes',
+             count)
+        end
       end
     end
 
@@ -77,7 +88,5 @@ module ConsoleRb
         box.add_css_class('process-list')
       end
     end
-
-    def _(text) = text
   end
 end

@@ -4,6 +4,8 @@ module ConsoleRb
   # The VTE widget plus everything bolted onto it: link matching, the context
   # menu, the term.* action group, zoom-on-ctrl-scroll and palette application.
   class Terminal
+    include I18n
+
     # Link regexes adapted, as upstream's are, from Pantheon Terminal.
     USERCHARS = '-[:alnum:]'
     USERCHARS_CLASS = "[#{USERCHARS}]".freeze
@@ -234,7 +236,7 @@ module ConsoleRb
       terminal.clipboard.read_text_async(nil) do |clipboard, result|
         accept_paste(clipboard.read_text_finish(result))
       rescue StandardError => e
-        @on_notify.call(_('Couldn’t Paste Text'), e.message)
+        @on_notify.call(p_('toast-message', "Couldn't Paste Text"), e.message)
       end
     end
 
@@ -280,7 +282,7 @@ module ConsoleRb
       Gtk::UriLauncher.new(uri).launch(terminal.root, nil) do |launcher, result|
         launcher.launch_finish(result)
       rescue StandardError => e
-        @on_notify.call(_('Couldn’t Open Link'), e.message)
+        @on_notify.call(p_('toast-message', "Couldn't Open Link"), e.message)
       end
     end
 
@@ -315,7 +317,5 @@ module ConsoleRb
     def translucent?
       @settings.transparency? && !terminal.root.nil?
     end
-
-    def _(text) = text
   end
 end

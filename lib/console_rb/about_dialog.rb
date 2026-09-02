@@ -3,6 +3,8 @@
 module ConsoleRb
   # The About window, plus the --version and --about console output.
   class AboutDialog
+    include I18n
+
     LOGO = <<~ART
          ______
         / ____/___  ____  _________  / /__
@@ -35,7 +37,5 @@ module ConsoleRb
       puts "console-rb #{VERSION} — a Ruby GTK4 port of GNOME Console"
       puts HOMEPAGE_URL
     end
-
-    def _(text) = text
   end
 end

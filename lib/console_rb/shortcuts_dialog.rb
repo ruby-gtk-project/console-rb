@@ -4,6 +4,8 @@ module ConsoleRb
   # The keyboard shortcuts reference. Built from the same table the application
   # registers its accelerators from, so the two cannot drift apart.
   class ShortcutsDialog
+    include I18n
+
     SECTIONS = {
       'Application' => [['New Window', '<Shift><Primary>n']],
       'Terminal' => [
@@ -42,7 +44,7 @@ module ConsoleRb
 
     def dialog
       @dialog ||= Adwaita::PreferencesDialog.new.tap do |d|
-        d.title = _('Keyboard Shortcuts')
+        d.title = p_('shortcut window', 'Shortcuts')
       end
     end
 
@@ -51,7 +53,7 @@ module ConsoleRb
     def groups
       @groups ||= SECTIONS.map do |section, shortcuts|
         Adwaita::PreferencesGroup.new.tap do |group|
-          group.title = _(section)
+          group.title = p_('shortcut window', section)
           shortcuts.each { |title, accelerator| group.add(row_for(title, accelerator)) }
         end
       end
@@ -59,7 +61,7 @@ module ConsoleRb
 
     def row_for(title, accelerator)
       Adwaita::ActionRow.new.tap do |row|
-        row.title = _(title)
+        row.title = p_('shortcut window', title)
         row.add_suffix(accelerator_label(accelerator))
       end
     end
@@ -82,7 +84,5 @@ module ConsoleRb
         .gsub('Page_Down', 'Page Down')
         .gsub('Page_Up', 'Page Up')
     end
-
-    def _(text) = text
   end
 end

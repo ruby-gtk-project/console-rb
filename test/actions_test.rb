@@ -309,6 +309,42 @@ class ActionsTest
   # --- Command line --------------------------------------------------------
 
   def define_cli_steps
+    step('German translations resolve') do
+      with_language('de') do |t|
+        raise "got #{t._('New Tab').inspect}" unless t._('New Tab') == 'Neuer Reiter'
+      end
+    end
+
+    step('a context-qualified string resolves') do
+      with_language('fr') do |t|
+        t.p_('toast-message', "Couldn't Open Link").then do |text|
+          raise "got #{text.inspect}" unless text.start_with?('Impossible')
+        end
+      end
+    end
+
+    step('plural forms select correctly') do
+      with_language('de') do
+        [1, 3].map { |n| ConsoleRb::CloseDialog.new(context: :tab, commands: Array.new(n), on_close: -> {}).body }
+              .then do |(one, many)|
+                raise 'singular wrong' unless one.start_with?('Ein Befehl')
+                raise 'plural wrong' unless many.start_with?('Einige Befehle')
+              end
+      end
+    end
+
+    step('every shipped catalogue loads') do
+      Dir.children('data/locale').sort.each do |lang|
+        with_language(lang) { |t| t._('New Tab') }
+      end
+    end
+
+    step('an untranslated locale falls back to English') do
+      with_language('C') do |t|
+        raise "got #{t._('New Tab').inspect}" unless t._('New Tab') == 'New Tab'
+      end
+    end
+
     step('a file drop becomes a shell-quoted path') do
       ConsoleRb::DropTarget.new(on_drop: ->(_text) {}).then do |drop|
         drop.quote(Gio::File.new_for_path('/tmp/a b.txt')).then do |quoted|
@@ -373,6 +409,22 @@ class ActionsTest
     step('--tab is parsed') do
       raise 'not set' unless ConsoleRb::CLI.new(['--tab']).parse.options[:tab]
     end
+  end
+
+  # Switching language mid-process needs both gettext's and the locale gem's
+  # caches cleared, which is what I18n.reset does.
+  def with_language(lang)
+    previous = ENV.fetch('LANGUAGE', nil)
+    ENV['LANGUAGE'] = lang
+    ConsoleRb::I18n.reset
+    yield translator
+  ensure
+    ENV['LANGUAGE'] = previous
+    ConsoleRb::I18n.reset
+  end
+
+  def translator
+    @translator ||= Class.new { include ConsoleRb::I18n }.new
   end
 
   def report

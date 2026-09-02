@@ -4,6 +4,8 @@ module ConsoleRb
   # One terminal session: the search bar, the terminal itself, and the banner
   # that appears when the child process exits and the tab goes read-only.
   class Tab
+    include I18n
+
     @next_id = 0
 
     class << self
@@ -328,7 +330,5 @@ module ConsoleRb
     attr_writer :on_search_change
 
     def bell = @on_bell&.call
-
-    def _(text) = text
   end
 end

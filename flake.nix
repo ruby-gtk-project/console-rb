@@ -116,13 +116,29 @@
           nativeBuildInputs = [ pkgs.makeWrapper ];
           buildInputs = [ gems ] ++ gtkStack;
 
-          dontBuild = true;
+          # The message catalogues are compiled with the gettext gem's rmsgfmt,
+          # not GNU msgfmt — see the Rakefile for why.
+          buildPhase = ''
+            runHook preBuild
+            ${gems.wrappedRuby}/bin/ruby -rbundler/setup -rgettext/tools -e '
+              require "fileutils"
+              File.readlines("po/LINGUAS").map(&:strip)
+                  .reject { |l| l.empty? || l.start_with?("#") }
+                  .select { |l| File.exist?("po/#{l}.po") }
+                  .each do |lang|
+                    dir = "data/locale/#{lang}/LC_MESSAGES"
+                    FileUtils.mkdir_p(dir)
+                    GetText::Tools::MsgFmt.run("po/#{lang}.po", "-o", "#{dir}/console-rb.mo")
+                  end
+            '
+            runHook postBuild
+          '';
 
           installPhase = ''
             runHook preInstall
 
             mkdir -p $out/share/console-rb $out/share/glib-2.0/schemas $out/share/applications
-            cp -r lib data $out/share/console-rb/
+            cp -r lib data po $out/share/console-rb/
             # bin/ has to sit next to lib/ for the launcher's require_relative.
             install -Dm755 bin/console-rb $out/share/console-rb/bin/console-rb
 
@@ -141,6 +157,7 @@
               --add-flags "-rbundler/setup" \
               --add-flags "$out/share/console-rb/bin/console-rb" \
               --set GI_TYPELIB_PATH "${typelibPath}" \
+              --set CONSOLE_RB_LOCALE_DIR "$out/share/console-rb/data/locale" \
               --prefix XDG_DATA_DIRS : "$out/share" \
               --prefix XDG_DATA_DIRS : "$out/share/gsettings-schemas/$name" \
               --prefix XDG_DATA_DIRS : "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}" \

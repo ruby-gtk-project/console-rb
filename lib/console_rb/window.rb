@@ -3,6 +3,8 @@
 module ConsoleRb
   # The terminal window: header bar, tab bar, tab overview and the win.* actions.
   class Window
+    include I18n
+
     STATUS_CLASSES = { privileged: 'root', remote: 'remote', playbox: 'playbox' }.freeze
 
     def initialize(application:, settings:, watcher:, on_new_window:, on_new_tab:)
@@ -383,7 +385,5 @@ module ConsoleRb
         item.set_attribute_value('custom', GLib::Variant.new(name))
       end
     end
-
-    def _(text) = text
   end
 end

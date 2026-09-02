@@ -3,6 +3,7 @@
 source 'https://rubygems.org'
 
 gem 'adwaita', '~> 4.3'
+gem 'gettext', '~> 3.5'
 gem 'gtk4', '~> 4.3'
 gem 'vte4', '~> 4.3'
 

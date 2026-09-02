@@ -7,6 +7,7 @@ require 'adwaita'
 require 'vte4'
 
 require_relative 'console_rb/version'
+require_relative 'console_rb/i18n'
 require_relative 'console_rb/shortcuts'
 require_relative 'console_rb/regex'
 require_relative 'console_rb/palette'
