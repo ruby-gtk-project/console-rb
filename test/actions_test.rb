@@ -295,6 +295,32 @@ class ActionsTest
   # --- Command line --------------------------------------------------------
 
   def define_cli_steps
+    step('a file drop becomes a shell-quoted path') do
+      ConsoleRb::DropTarget.new(on_drop: ->(_text) {}).then do |drop|
+        drop.quote(Gio::File.new_for_path('/tmp/a b.txt')).then do |quoted|
+          raise "got #{quoted.inspect}" unless quoted == '/tmp/a\\ b.txt'
+        end
+      end
+    end
+
+    step('a non-local drop falls back to its URI') do
+      ConsoleRb::DropTarget.new(on_drop: ->(_text) {}).then do |drop|
+        drop.quote(Gio::File.new_for_uri('sftp://host/x')).then do |quoted|
+          raise "got #{quoted.inspect}" unless quoted.start_with?('sftp://')
+        end
+      end
+    end
+
+    step('a text drop is passed through') do
+      ConsoleRb::DropTarget.new(on_drop: ->(_text) {}).then do |drop|
+        raise 'not passed through' unless drop.text_for('hello') == 'hello'
+      end
+    end
+
+    step('the drop target builds a controller') do
+      ConsoleRb::DropTarget.new(on_drop: ->(_text) {}).build
+    end
+
     step('--title is parsed') do
       ConsoleRb::CLI.new(['--title', 'Hello']).parse.options.then do |options|
         raise "got #{options[:title].inspect}" unless options[:title] == 'Hello'

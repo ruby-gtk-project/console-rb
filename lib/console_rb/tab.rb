@@ -61,6 +61,11 @@ module ConsoleRb
       terminal.build
       terminal_scroller.child = terminal.terminal
 
+      drop_target.tap do |drop|
+        drop.widget = root
+        terminal.terminal.add_controller(drop.build)
+      end
+
       root
     end
 
@@ -183,6 +188,12 @@ module ConsoleRb
     end
 
     def toast_overlay = @toast_overlay ||= Adwaita::ToastOverlay.new
+
+    # Dropped paths are typed at the prompt rather than executed, so the user
+    # still has to press Return.
+    def drop_target
+      @drop_target ||= DropTarget.new(on_drop: ->(text) { terminal.terminal.feed_child(text) })
+    end
 
     def column = @column ||= Gtk::Box.new(:vertical, 0)
 

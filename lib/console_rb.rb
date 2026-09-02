@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shellwords'
+
 require 'gtk4'
 require 'adwaita'
 require 'vte4'
@@ -14,6 +16,7 @@ require_relative 'console_rb/process_info'
 require_relative 'console_rb/train'
 require_relative 'console_rb/empty'
 require_relative 'console_rb/terminal'
+require_relative 'console_rb/drop_target'
 require_relative 'console_rb/tab'
 require_relative 'console_rb/close_dialog'
 require_relative 'console_rb/pages'
