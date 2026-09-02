@@ -8,7 +8,7 @@ module ConsoleRb
     attr_reader :settings
 
     def initialize(settings:, watcher:, on_zoom:, on_status_change:, on_bell:,
-                   on_empty:, on_create_tearoff_host:)
+                   on_empty:, on_create_tearoff_host:, on_search_change:)
       @settings = settings
       @watcher = watcher
       @on_zoom = on_zoom
@@ -16,6 +16,7 @@ module ConsoleRb
       @on_bell = on_bell
       @on_empty = on_empty
       @on_create_tearoff_host = on_create_tearoff_host
+      @on_search_change = on_search_change
       @tabs = {}
     end
 
@@ -39,6 +40,7 @@ module ConsoleRb
           @tabs[widget] = { tab: tab, page: page }
           tab.on_change { refresh(tab) }
           tab.on_bell = -> { rang(tab, page) }
+          tab.on_search_change = ->(enabled) { @on_search_change.call(enabled) }
           refresh(tab)
           tab_view.selected_page = page
           tab.start
@@ -52,7 +54,7 @@ module ConsoleRb
 
     def selected_tab = tab_for(tab_view.selected_page)
 
-    def count = tab_view.n_pages
+    def tab_count = tab_view.n_pages
 
     def tabs = @tabs.each_value.map { |entry| entry[:tab] }
 
@@ -76,7 +78,7 @@ module ConsoleRb
       icon_name && Gio::ThemedIcon.new(icon_name)
     end
 
-    def rang(tab, page)
+    def rang(_tab, page)
       page.needs_attention = true unless tab_view.selected_page == page
       @on_bell.call
     end
@@ -85,10 +87,11 @@ module ConsoleRb
       pages_changed
       @on_status_change.call
       tab_view.selected_page&.needs_attention = false
+      @on_search_change.call(selected_tab&.search_mode_enabled || false)
     end
 
     def pages_changed
-      @on_empty.call(count.zero?)
+      @on_empty.call(tab_count.zero?)
     end
 
     # --- Status --------------------------------------------------------------

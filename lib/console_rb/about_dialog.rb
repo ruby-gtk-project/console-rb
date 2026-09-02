@@ -4,11 +4,11 @@ module ConsoleRb
   # The About window, plus the --version and --about console output.
   class AboutDialog
     LOGO = <<~ART
-        ______
-       / ____/___  ____  _________  / /__
-      / /   / __ \\/ __ \\/ ___/ __ \\/ / _ \\
-     / /___/ /_/ / / / (__  ) /_/ / /  __/
-     \\____/\\____/_/ /_/____/\\____/_/\\___/
+         ______
+        / ____/___  ____  _________  / /__
+       / /   / __ \\/ __ \\/ ___/ __ \\/ / _ \\
+      / /___/ /_/ / / / (__  ) /_/ / /  __/
+      \\____/\\____/_/ /_/____/\\____/_/\\___/
     ART
 
     def present(parent) = dialog.present(parent)

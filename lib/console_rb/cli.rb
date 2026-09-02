@@ -41,7 +41,7 @@ module ConsoleRb
 
     def parser
       @parser ||= OptionParser.new do |parser|
-        parser.banner = "Usage: console-rb [OPTION…] [-e|-- COMMAND [ARGUMENT…]]"
+        parser.banner = 'Usage: console-rb [OPTION…] [-e|-- COMMAND [ARGUMENT…]]'
         parser.separator ''
         parser.separator "console-rb #{VERSION} — Terminal Emulator"
         parser.separator ''

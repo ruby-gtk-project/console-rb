@@ -51,6 +51,9 @@ module ConsoleRb
 
     def startup
       Adwaita.init
+      # GtkApplication is the authority on which windows still exist; hooking
+      # each window's own destroy signal misses windows torn down with the app.
+      app.signal_connect('window-removed') { |_app, gtk_window| forget(gtk_window) }
       apply_color_scheme
       settings.on_change { |key| apply_color_scheme if key == 'theme' }
 
@@ -131,7 +134,10 @@ module ConsoleRb
       end
 
       app.add_action(theme_action)
-      settings.on_change { refresh_zoom_actions }
+      settings.on_change do |key|
+        refresh_zoom_actions
+        sync_theme_action if key == 'theme'
+      end
       refresh_zoom_actions
     end
 
@@ -144,16 +150,30 @@ module ConsoleRb
       end
     end
 
+    # No change-state handler: calling set_state from inside one re-enters
+    # through the bindings and segfaults, and without a handler GLib updates the
+    # state itself, which notify::state then reports back to us.
     def theme_action
       @theme_action ||= Gio::SimpleAction.new(
         'theme', GLib::VariantType.new('s'), GLib::Variant.new(settings.theme.to_s)
       ).tap do |action|
-        action.signal_connect('activate') { |act, parameter| act.change_state(parameter) }
-        action.signal_connect('change-state') do |act, state|
-          act.set_state(state)
-          settings.theme = state.get_string
+        action.signal_connect('notify::state') do
+          settings.theme = state_string(action) unless @syncing_theme
         end
       end
+    end
+
+    def state_string(action)
+      action.state.then { |state| state.is_a?(GLib::Variant) ? state.get_string : state.to_s }
+    end
+
+    # Keeps the menu's radio selection right when the theme changes elsewhere,
+    # such as from the theme switcher.
+    def sync_theme_action
+      @syncing_theme = true
+      theme_action.state = GLib::Variant.new(settings.theme.to_s) unless
+        state_string(theme_action) == settings.theme.to_s
+      @syncing_theme = false
     end
 
     def install_accelerators
@@ -189,7 +209,6 @@ module ConsoleRb
         window.build
         restore_geometry(window)
         @windows << window
-        window.window.signal_connect('destroy') { @windows.delete(window) }
         window.window.signal_connect('notify::is-active') { refresh_background_state }
       end
     end
@@ -204,6 +223,11 @@ module ConsoleRb
         window.window.maximize if settings.window_maximised?
         window.window.fullscreen if settings.window_fullscreen?
       end
+    end
+
+    def forget(gtk_window)
+      @windows.reject! { |window| window.window == gtk_window }
+      refresh_background_state
     end
 
     # Polling backs off whenever no window has focus, which is what upstream

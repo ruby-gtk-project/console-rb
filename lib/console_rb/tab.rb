@@ -12,7 +12,7 @@ module ConsoleRb
       def allocate_id = self.next_id += 1
     end
 
-    attr_reader :id, :title, :path, :train, :status, :terminal
+    attr_reader :id, :title, :path, :train, :status
 
     def initialize(settings:, watcher:, initial_work_dir: nil, command: nil,
                    tab_title: nil, close_on_quit: true)
@@ -131,8 +131,11 @@ module ConsoleRb
     end
 
     def child_exited(status)
-      died(*(status.zero? ? [:info, _('<b>Read Only</b> — Command exited')]
-                          : [:error, format(_('<b>Read Only</b> — Command exited with code %i'), status)]))
+      died(*(if status.zero?
+               [:info, _('<b>Read Only</b> — Command exited')]
+             else
+               [:error, format(_('<b>Read Only</b> — Command exited with code %i'), status)]
+             end))
     end
 
     # A tab with no train left, or one whose train is idle, closes silently.
@@ -145,6 +148,9 @@ module ConsoleRb
     # --- Search --------------------------------------------------------------
 
     def connect_search
+      search_bar.signal_connect('notify::search-mode-enabled') do
+        @on_search_change&.call(search_mode_enabled)
+      end
       search_entry.signal_connect('search-changed') { search_changed }
       search_entry.signal_connect('next-match') { terminal.terminal.search_find_next }
       search_entry.signal_connect('previous-match') { terminal.terminal.search_find_previous }
@@ -301,6 +307,9 @@ module ConsoleRb
     # Pages installs a listener here so it can flash the header bar and mark the
     # tab as needing attention when it is not the visible one.
     attr_writer :on_bell
+
+    # Window listens here to keep its find button in step with the search bar.
+    attr_writer :on_search_change
 
     def bell = @on_bell&.call
 

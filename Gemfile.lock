@@ -4,6 +4,7 @@ GEM
     adwaita (4.3.8)
       gtk4 (= 4.3.8)
       rake
+    ast (2.4.3)
     atk (4.3.8)
       glib2 (= 4.3.8)
       rake
@@ -40,16 +41,44 @@ GEM
       gdk4 (= 4.3.8)
       gsk4 (= 4.3.8)
     json (2.21.2)
+    language_server-protocol (3.17.0.6)
+    lint_roller (1.1.0)
     matrix (0.4.3)
     native-package-installer (1.1.9)
     pango (4.3.8)
       cairo-gobject (= 4.3.8)
       gobject-introspection (= 4.3.8)
+    parallel (2.1.0)
+    parser (3.3.12.0)
+      ast (~> 2.4.1)
+      racc
     pkg-config (1.6.5)
+    prism (1.9.0)
+    racc (1.8.1)
+    rainbow (3.1.1)
     rake (13.4.2)
     red-colors (0.4.0)
       json
       matrix
+    regexp_parser (2.12.0)
+    rubocop (1.90.0)
+      json (>= 2.3)
+      language_server-protocol (~> 3.17.0.2)
+      lint_roller (~> 1.1.0)
+      parallel (>= 1.10)
+      parser (>= 3.3.0.2)
+      rainbow (>= 2.2.2, < 4.0)
+      regexp_parser (>= 2.9.3, < 3.0)
+      rubocop-ast (>= 1.49.0, < 2.0)
+      ruby-progressbar (~> 1.7)
+      unicode-display_width (>= 2.4.0, < 4.0)
+    rubocop-ast (1.50.0)
+      parser (>= 3.3.7.2)
+      prism (~> 1.7)
+    ruby-progressbar (1.13.0)
+    unicode-display_width (3.2.0)
+      unicode-emoji (~> 4.1)
+    unicode-emoji (4.2.0)
     vte4 (4.3.8)
       gtk4 (= 4.3.8)
       rake
@@ -61,6 +90,8 @@ PLATFORMS
 DEPENDENCIES
   adwaita (~> 4.3)
   gtk4 (~> 4.3)
+  rake (~> 13.0)
+  rubocop (~> 1.80)
   vte4 (~> 4.3)
 
 BUNDLED WITH

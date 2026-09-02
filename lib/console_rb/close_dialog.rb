@@ -49,12 +49,18 @@ module ConsoleRb
       end
     end
 
+    # AdwActionRow renders its title as Pango markup and GLib's escape helper is
+    # not bound, so command lines are escaped here before they reach the row.
+    ESCAPES = { '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;', "'" => '&#39;' }.freeze
+
     def row_for(command)
       Adwaita::ActionRow.new.tap do |row|
-        row.title = GLib.markup_escape_text(command.title)
-        row.subtitle = GLib.markup_escape_text(command.subtitle)
+        row.title = escape(command.title)
+        row.subtitle = escape(command.subtitle)
       end
     end
+
+    def escape(text) = text.to_s.gsub(/[&<>"']/, ESCAPES)
 
     def list_frame
       @list_frame ||= Gtk::ScrolledWindow.new.tap do |scroller|

@@ -45,8 +45,8 @@ class IntegrationTest
   def terminal = tab.terminal.terminal
 
   def start_checks
-    check('a window was created', application.windows.length == 1)
-    check('the window has one tab', window.pages.count == 1)
+    check('a window was created', application.windows.one?)
+    check('the window has one tab', window.pages.tab_count == 1)
     check('the tab has a terminal', !tab.terminal.terminal.nil?)
     check('a pty was attached', !terminal.pty.nil?)
 
@@ -94,7 +94,7 @@ class IntegrationTest
     ConsoleRb::Liveries.standard.night.then do |palette|
       check('the standard palette has 16 colours', palette.colours.length == 16)
       check('the standard palette is translucent', palette.transparency.positive?)
-      check('an opaque palette has full alpha', palette.opaque.background.alpha == 1.0)
+      check('an opaque palette has full alpha', (palette.opaque.background.alpha - 1.0).abs < 0.001)
     end
     check('an unknown livery uuid falls back', ConsoleRb::Liveries.find('nope').uuid == ConsoleRb::Liveries::KGX_UUID)
     check('a livery without day colours reuses night',

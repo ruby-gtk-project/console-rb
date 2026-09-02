@@ -94,6 +94,15 @@
           inherit ruby gemConfig;
           gemdir = ./.;
         };
+
+        # The shipped application only needs the runtime gems; rake and rubocop
+        # stay in the devshell.
+        runtimeGems = pkgs.bundlerEnv {
+          name = "console-rb-runtime-gems";
+          inherit ruby gemConfig;
+          gemdir = ./.;
+          groups = [ "default" ];
+        };
       in
       {
         packages.default = pkgs.stdenv.mkDerivation {
@@ -102,7 +111,7 @@
           src = ./.;
 
           nativeBuildInputs = [ pkgs.makeWrapper pkgs.wrapGAppsHook4 ];
-          buildInputs = [ gems ruby ] ++ gtkStack;
+          buildInputs = [ runtimeGems ruby ] ++ gtkStack;
 
           dontBuild = true;
 
@@ -114,7 +123,7 @@
             cp bin/console-rb $out/share/console-rb/
 
             mkdir -p $out/bin
-            makeWrapper ${gems}/bin/ruby $out/bin/console-rb \
+            makeWrapper ${runtimeGems}/bin/ruby $out/bin/console-rb \
               --add-flags "-I$out/share/console-rb/lib $out/share/console-rb/console-rb"
 
             install -Dm644 data/org.gnome.Console.desktop \
@@ -135,7 +144,8 @@
             pkgs.bundler
             pkgs.bundix
             pkgs.pkg-config
-            pkgs.rubyPackages_3_3.rubocop
+            pkgs.glib.dev            # glib-compile-schemas
+            pkgs.xvfb-run            # for `rake test` on a headless machine
             pkgs.gsettings-desktop-schemas
             pkgs.adwaita-icon-theme
           ] ++ gtkStack;

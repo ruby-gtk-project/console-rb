@@ -5,8 +5,6 @@ module ConsoleRb
   class Window
     STATUS_CLASSES = { privileged: 'root', remote: 'remote', playbox: 'playbox' }.freeze
 
-    attr_reader :pages
-
     def initialize(application:, settings:, watcher:, on_new_window:, on_new_tab:)
       @application = application
       @settings = settings
@@ -48,6 +46,10 @@ module ConsoleRb
           tab_bar.view = pages.tab_view
         end
 
+        find_button.signal_connect('toggled') do
+          pages.selected_tab&.search_mode_enabled = find_button.active? unless @syncing_find
+        end
+
         win.add_breakpoint(narrow_breakpoint)
         win.signal_connect('notify::fullscreened') { fullscreened_changed }
         win.signal_connect('close-request') { close_requested }
@@ -69,6 +71,7 @@ module ConsoleRb
     def actions
       @actions ||= Gio::SimpleActionGroup.new.tap do |group|
         {
+          'find' => -> { toggle_search },
           'new-window' => -> { @on_new_window.call(self) },
           'new-tab' => -> { @on_new_tab.call(self) },
           'close-tab' => -> { pages.close_selected_page },
@@ -86,23 +89,26 @@ module ConsoleRb
             end
           )
         end
-
-        group.add_action(find_action)
       end
     end
 
-    # `win.find` is a stateful toggle so the header bar button can reflect
-    # whether the search bar is currently open.
-    def find_action
-      @find_action ||= Gio::SimpleAction.new('find', nil, GLib::Variant.new(false)).tap do |action|
-        action.signal_connect('change-state') do |act, state|
-          act.set_state(state)
-          pages.selected_tab&.search_mode_enabled = state.get_boolean
-        end
-        action.signal_connect('activate') do |act, _parameter|
-          act.change_state(GLib::Variant.new(!act.state.get_boolean))
-        end
+    # Upstream makes `win.find` a property action bound to the window's
+    # search-mode-enabled property. A stateful GSimpleAction is the closest
+    # equivalent here, but calling set_state from inside its own change-state
+    # handler re-enters through the bindings and crashes, so the action stays
+    # stateless and the toggle button carries the state instead.
+    def toggle_search
+      pages.selected_tab.then do |tab|
+        tab && (tab.search_mode_enabled = !tab.search_mode_enabled)
       end
+    end
+
+    # Fired when the search bar opens or closes by any route — the action, the
+    # button, or Escape inside the bar — so the button never drifts out of sync.
+    def search_mode_changed(enabled)
+      @syncing_find = true
+      find_button.active = enabled
+      @syncing_find = false
     end
 
     def create_tab
@@ -206,7 +212,8 @@ module ConsoleRb
         on_status_change: -> { status_changed },
         on_bell: -> { ring if @settings.visual_bell? },
         on_empty: ->(empty_now) { content_empty(empty_now) },
-        on_create_tearoff_host: -> { @on_new_window.call(self).pages }
+        on_create_tearoff_host: -> { @on_new_window.call(self).pages },
+        on_search_change: ->(enabled) { search_mode_changed(enabled) }
       )
     end
 
@@ -232,7 +239,6 @@ module ConsoleRb
     def find_button
       @find_button ||= Gtk::ToggleButton.new.tap do |button|
         button.focus_on_click = false
-        button.action_name = 'win.find'
         button.tooltip_text = _('Find in Terminal')
         button.icon_name = 'edit-find-symbolic'
       end

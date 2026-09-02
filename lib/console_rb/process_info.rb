@@ -36,7 +36,7 @@ module ConsoleRb
     def remote?
       return true if REMOTE_PROGRAMS.include?(program)
 
-      program == 'waypipe' && argv.drop(1).any? { |arg| %w[ssh telnet].include?(arg) }
+      program == 'waypipe' && argv.drop(1).intersect?(%w[ssh telnet])
     end
 
     # Upstream calls these "playbox" sessions — a shell inside a container or
@@ -50,7 +50,7 @@ module ConsoleRb
           ppid: read_ppid(pid),
           argv: read_argv(pid),
           euid: read_euid(pid))
-    rescue SystemCallError, Errno::ENOENT
+    rescue SystemCallError
       nil
     end
 
@@ -64,7 +64,7 @@ module ConsoleRb
       # The comm field can contain spaces and parentheses, so parse after the
       # final ')' rather than splitting the whole line.
       File.read("/proc/#{pid}/stat").then do |stat|
-        stat[(stat.rindex(')') + 2)..].split(' ')[1].to_i
+        stat[(stat.rindex(')') + 2)..].split[1].to_i
       end
     end
 
@@ -83,9 +83,9 @@ module ConsoleRb
 
     def self.all
       Dir.children('/proc')
-         .select { |entry| entry.match?(/\A\d+\z/) }
+         .grep(/\A\d+\z/)
          .filter_map { |entry| read(entry.to_i) }
-         .each_with_object({}) { |process, table| table[process.pid] = process }
+         .to_h { |process| [process.pid, process] }
     end
 
     # Walks pid -> ppid, guarding against the cycle a re-used pid could create.

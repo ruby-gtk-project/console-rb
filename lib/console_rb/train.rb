@@ -5,7 +5,7 @@ module ConsoleRb
   # status flags from them. Upstream names this a "train" — the leader process
   # plus everything it is pulling along.
   class Train
-    attr_reader :pid, :children
+    attr_reader :pid, :children, :status
 
     def initialize(pid)
       @pid = pid
@@ -15,8 +15,6 @@ module ConsoleRb
     end
 
     def on_change(&block) = @listeners << block
-
-    def status = @status
 
     def remote? = @status.include?(:remote)
 
@@ -68,7 +66,7 @@ module ConsoleRb
     def remove(train) = @trains.delete(train)
 
     def start
-      @source ||= GLib::Timeout.add_seconds(FOREGROUND_INTERVAL) do
+      @start ||= GLib::Timeout.add_seconds(FOREGROUND_INTERVAL) do
         tick
         GLib::Source::CONTINUE
       end

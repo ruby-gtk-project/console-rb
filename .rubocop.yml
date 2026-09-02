@@ -21,3 +21,16 @@ Naming/MethodName:
 
 Naming/MethodParameterName:
   MinNameLength: 1
+
+# The declarative house style is built on chained tap/then blocks and on
+# handlers whose boolean return value is part of the GTK signal contract.
+Style/MultilineBlockChain:
+  Enabled: false
+
+Naming/PredicateMethod:
+  Enabled: false
+
+Style/FormatStringToken:
+  EnforcedStyle: template
+  AllowedMethods:
+    - format

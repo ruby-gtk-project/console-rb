@@ -6,10 +6,10 @@ module ConsoleRb
   class Terminal
     # Link regexes adapted, as upstream's are, from Pantheon Terminal.
     USERCHARS = '-[:alnum:]'
-    USERCHARS_CLASS = "[#{USERCHARS}]"
+    USERCHARS_CLASS = "[#{USERCHARS}]".freeze
     PASSCHARS_CLASS = '[-[:alnum:]\\Q,?;.:/!%$^*&~"#\'\\E]'
     HOSTCHARS_CLASS = '[-[:alnum:]]'
-    HOST = "#{HOSTCHARS_CLASS}+(\\.#{HOSTCHARS_CLASS}+)*"
+    HOST = "#{HOSTCHARS_CLASS}+(\\.#{HOSTCHARS_CLASS}+)*".freeze
     PORT = '(?:\\:[[:digit:]]{1,5})?'
     PATHCHARS_CLASS = '[-[:alnum:]\\Q_$.+!*,;:@&=?/~#%\\E]'
     PATHTERM_CLASS = '[^\\Q]\'.}>) \t\r\n,"\\E]'
@@ -17,9 +17,9 @@ module ConsoleRb
              '|irc:|sftp:|ldaps?:|nfs:|smb:|rsync:|' \
              'ssh:|rlogin:|telnet:|git:' \
              '|git\\+ssh:|bzr:|bzr\\+ssh:|svn:|svn\\+ssh:|hg:|mailto:|magnet:)'
-    USERPASS = "#{USERCHARS_CLASS}+(?:#{PASSCHARS_CLASS}+)?"
+    USERPASS = "#{USERCHARS_CLASS}+(?:#{PASSCHARS_CLASS}+)?".freeze
     URLPATH = "(?:(/#{PATHCHARS_CLASS}+(?:[(]#{PATHCHARS_CLASS}*[)])*" \
-              "#{PATHCHARS_CLASS}*)*#{PATHTERM_CLASS})?"
+              "#{PATHCHARS_CLASS}*)*#{PATHTERM_CLASS})?".freeze
 
     LINK_REGEXES = [
       "#{SCHEME}//(?:#{USERPASS}\\@)?#{HOST}#{PORT}#{URLPATH}",
