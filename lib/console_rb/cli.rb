@@ -75,7 +75,9 @@ module ConsoleRb
 
     # Anything that prints and exits without ever opening a window. Returns
     # true when it handled the invocation and no window should be opened.
-    def handle_immediate(settings)
+    # `settings` is a block so that --version, --about and --colour-table work
+    # even when the GSettings schema is not installed.
+    def handle_immediate(&settings)
       if @options[:error]
         warn(@options[:error])
       elsif @options[:version]
@@ -85,9 +87,9 @@ module ConsoleRb
       elsif @options[:colour_table]
         print_colour_table
       elsif @options[:set_shell]
-        settings.custom_shell = @options[:set_shell]
+        settings.call.custom_shell = @options[:set_shell]
       elsif @options[:set_scrollback]
-        settings.scrollback_limit = @options[:set_scrollback]
+        settings.call.scrollback_limit = @options[:set_scrollback]
       elsif conflicting?
         warn('Cannot use both --working-directory and positional parameters')
       else

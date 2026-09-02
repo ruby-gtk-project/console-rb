@@ -89,20 +89,18 @@
           vte4 = rubyGnomeGem;
         };
 
+        # `makeSearchPath` would take each package's *first* output, and glib's
+        # first output is `bin`, which carries no typelibs — hence the explicit
+        # `.out`. at-spi2-core is here for the Atk typelib.
+        typelibPath = pkgs.lib.makeSearchPath "lib/girepository-1.0"
+          (map (drv: drv.out or drv) (gtkStack ++ [ pkgs.at-spi2-core ]));
+
         gems = pkgs.bundlerEnv {
           name = "console-rb-gems";
           inherit ruby gemConfig;
           gemdir = ./.;
         };
 
-        # The shipped application only needs the runtime gems; rake and rubocop
-        # stay in the devshell.
-        runtimeGems = pkgs.bundlerEnv {
-          name = "console-rb-runtime-gems";
-          inherit ruby gemConfig;
-          gemdir = ./.;
-          groups = [ "default" ];
-        };
       in
       {
         packages.default = pkgs.stdenv.mkDerivation {
@@ -110,24 +108,44 @@
           version = "0.1.0";
           src = ./.;
 
-          nativeBuildInputs = [ pkgs.makeWrapper pkgs.wrapGAppsHook4 ];
-          buildInputs = [ runtimeGems ruby ] ++ gtkStack;
+          # Deliberately no wrapGAppsHook4 and no glib in nativeBuildInputs:
+          # glib's setup hook relocates the schema during fixup, after
+          # wrapGAppsHook4 has already computed its wrapper arguments, so the
+          # schema ends up somewhere the wrapper never looks. Compiling the
+          # schema and building the wrapper by hand keeps the two in step.
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          buildInputs = [ gems ] ++ gtkStack;
 
           dontBuild = true;
 
           installPhase = ''
             runHook preInstall
 
-            mkdir -p $out/share/console-rb
+            mkdir -p $out/share/console-rb $out/share/glib-2.0/schemas $out/share/applications
             cp -r lib data $out/share/console-rb/
-            cp bin/console-rb $out/share/console-rb/
+            # bin/ has to sit next to lib/ for the launcher's require_relative.
+            install -Dm755 bin/console-rb $out/share/console-rb/bin/console-rb
 
-            mkdir -p $out/bin
-            makeWrapper ${runtimeGems}/bin/ruby $out/bin/console-rb \
-              --add-flags "-I$out/share/console-rb/lib $out/share/console-rb/console-rb"
+            cp data/schemas/org.gnome.Console.Rb.gschema.xml $out/share/glib-2.0/schemas/
+            ${pkgs.glib.dev}/bin/glib-compile-schemas $out/share/glib-2.0/schemas
+            # glib's setup hook (pulled in transitively through gtk4) relocates
+            # this directory to share/gsettings-schemas/$name during fixup, so
+            # the wrapper below points at both the pre- and post-move paths.
 
-            install -Dm644 data/org.gnome.Console.desktop \
-              $out/share/applications/org.gnome.Console.desktop
+            cp data/org.gnome.Console.desktop $out/share/applications/
+
+            # -rbundler/setup puts the bundled gems on the load path, and
+            # GI_TYPELIB_PATH keeps GObject-Introspection from re-registering
+            # types the cairo gem's C extension has already registered.
+            makeWrapper ${gems.wrappedRuby}/bin/ruby $out/bin/console-rb \
+              --add-flags "-rbundler/setup" \
+              --add-flags "$out/share/console-rb/bin/console-rb" \
+              --set GI_TYPELIB_PATH "${typelibPath}" \
+              --prefix XDG_DATA_DIRS : "$out/share" \
+              --prefix XDG_DATA_DIRS : "$out/share/gsettings-schemas/$name" \
+              --prefix XDG_DATA_DIRS : "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}" \
+              --prefix XDG_DATA_DIRS : "${pkgs.gtk4}/share/gsettings-schemas/${pkgs.gtk4.name}" \
+              --prefix XDG_DATA_DIRS : "${pkgs.adwaita-icon-theme}/share"
 
             runHook postInstall
           '';

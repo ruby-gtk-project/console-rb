@@ -71,7 +71,7 @@ module ConsoleRb
 
     def handle_command_line(command_line)
       CLI.new(command_line.arguments.drop(1)).parse.then do |cli|
-        if cli.handle_immediate(settings)
+        if cli.handle_immediate { settings }
           cli.options[:error] ? 1 : 0
         else
           open_for(cli.options, command_line.cwd)
