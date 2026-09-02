@@ -199,7 +199,12 @@ module ConsoleRb
     # Dropped paths are typed at the prompt rather than executed, so the user
     # still has to press Return.
     def drop_target
-      @drop_target ||= DropTarget.new(on_drop: ->(text) { terminal.terminal.feed_child(text) })
+      @drop_target ||= DropTarget.new(
+        on_drop: ->(text) { terminal.terminal.feed_child(text) },
+        on_error: lambda { |title, body, content: nil, flags: []|
+          throw_spad(title: title, body: body, content: content, flags: flags)
+        }
+      )
     end
 
     def column = @column ||= Gtk::Box.new(:vertical, 0)
@@ -232,7 +237,9 @@ module ConsoleRb
         on_bell: -> { bell },
         on_child_exit: ->(status) { child_exited(status) },
         on_path_change: ->(path) { path_changed(path) },
-        on_notify: ->(title, body) { toast("#{title}: #{body}") }
+        on_notify: lambda { |title, body, content: nil, flags: []|
+          throw_spad(title: title, body: body, content: content, flags: flags)
+        }
       )
     end
 
@@ -317,6 +324,19 @@ module ConsoleRb
     def tooltip = @path&.path
 
     def toast(message) = toast_overlay.add_toast(Adwaita::Toast.new(message))
+
+    # Errors surface as a toast carrying a "Details" button; pressing it opens
+    # the full error dialog. This is upstream's spad-thrown path.
+    def throw_spad(title:, body:, content: nil, error: nil, flags: [])
+      Adwaita::Toast.new(title).tap do |t|
+        t.button_label = p_('toast-button', '_Details')
+        t.signal_connect('button-clicked') do
+          Spad.new(title: title, body: body, content: content,
+                   error: error, flags: flags).present(root)
+        end
+        toast_overlay.add_toast(t)
+      end
+    end
 
     def zoom(direction)
       direction == :in ? @settings.increase_scale : @settings.decrease_scale

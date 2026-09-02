@@ -236,6 +236,44 @@ class ActionsTest
   # --- Theme ---------------------------------------------------------------
 
   def define_theme_steps
+    step('the error details dialog builds and presents') do
+      ConsoleRb::Spad.new(
+        title: 'Something broke',
+        body: 'An explanation of what went wrong.',
+        content: 'the raw error text',
+        flags: %i[show_report show_sys_info]
+      ).tap do |spad|
+        spad.present(window.window)
+        spad.dialog.close
+      end
+    end
+
+    step('the error message includes the system info when asked') do
+      ConsoleRb::Spad.new(title: 't', body: 'b', content: 'raw',
+                          flags: [:show_sys_info]).message_text.then do |text|
+        raise 'no raw content' unless text.include?('raw')
+        raise 'no system info' unless text.include?('console-rb:')
+      end
+    end
+
+    step('the error message omits the system info otherwise') do
+      ConsoleRb::Spad.new(title: 't', body: 'b', content: 'raw').message_text.then do |text|
+        raise 'system info leaked in' if text.include?('console-rb:')
+      end
+    end
+
+    step('the system info report names the key libraries') do
+      ConsoleRb::SystemInfo.report.then do |report|
+        %w[console-rb: Adw: Vte: Gtk: GLib: Ruby: OS:].each do |field|
+          raise "missing #{field}" unless report.include?(field)
+        end
+      end
+    end
+
+    step('a toast with details reaches the spad') do
+      pages.selected_tab.throw_spad(title: 'Toasted', body: 'Body text')
+    end
+
     step('the theme switcher builds') do
       ConsoleRb::ThemeSwitcher.new(settings: settings).build
     end

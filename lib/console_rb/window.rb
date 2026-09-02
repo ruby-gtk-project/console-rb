@@ -77,7 +77,7 @@ module ConsoleRb
           'new-window' => -> { @on_new_window.call(self) },
           'new-tab' => -> { @on_new_tab.call(self) },
           'close-tab' => -> { pages.close_selected_page },
-          'about' => -> { AboutDialog.new.present(window) },
+          'about' => -> { AboutDialog.new(root: window).present(window) },
           'show-tabs' => -> { tab_overview.open = true },
           'show-tabs-desktop' => -> { tab_overview.open = true },
           'show-preferences-window' => -> { PreferencesDialog.new(settings: @settings).present(window) },

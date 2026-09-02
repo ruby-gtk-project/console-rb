@@ -236,7 +236,14 @@ module ConsoleRb
       terminal.clipboard.read_text_async(nil) do |clipboard, result|
         accept_paste(clipboard.read_text_finish(result))
       rescue StandardError => e
-        @on_notify.call(p_('toast-message', "Couldn't Paste Text"), e.message)
+        @on_notify.call(
+          p_('toast-message', "Couldn't Paste Text"),
+          p_('spad-message',
+             'An unexpected error occurred whilst reading the clipboard. Please ' \
+             'include the following information if you report the error.'),
+          content: e.message,
+          flags: %i[show_report show_sys_info]
+        )
       end
     end
 
@@ -275,16 +282,50 @@ module ConsoleRb
     end
 
     def show_in_files
-      @path.then { |file| launch(file.uri) if file }
+      @path.then { |file| launch(file.uri, p_('toast-message', "Couldn't Show File")) if file }
     end
 
-    def launch(uri)
+    def launch(uri, failure_title = nil)
       Gtk::UriLauncher.new(uri).launch(terminal.root, nil) do |launcher, result|
         launcher.launch_finish(result)
       rescue StandardError => e
-        @on_notify.call(p_('toast-message', "Couldn't Open Link"), e.message)
+        report_launch_failure(uri, e, failure_title)
       end
     end
+
+    # A missing handler for the scheme is the common, explicable case and gets a
+    # plain explanation; anything else is a bug worth reporting.
+    def report_launch_failure(uri, error, failure_title)
+      (failure_title || p_('toast-message', "Couldn't Open Link")).then do |title|
+        if error.message.to_s.match?(/not supported|No application/i)
+          @on_notify.call(title, unsupported_body(uri))
+        else
+          @on_notify.call(title, unexpected_body(uri), content: "URI: #{uri}\n#{error.message}",
+                                                       flags: %i[show_report show_sys_info])
+        end
+      end
+    end
+
+    def unsupported_body(uri)
+      format(p_('spad-message',
+                'The link “<a href="%s">%s</a>” uses the protocol “%s”, for which ' \
+                'no apps are installed.'),
+             escape(uri), escape(uri), scheme_of(uri))
+    end
+
+    def unexpected_body(uri)
+      format(p_('spad-message',
+                'An unexpected error occurred whilst opening the link ' \
+                '“<a href="%s">%s</a>”. Please include the following information ' \
+                'if you report the error.'),
+             escape(uri), escape(uri))
+    end
+
+    def scheme_of(uri) = uri.to_s[/\A([a-zA-Z][a-zA-Z0-9+.-]*):/, 1].to_s
+
+    MARKUP_ESCAPES = { '&' => '&amp;', '<' => '&lt;', '>' => '&gt;', '"' => '&quot;' }.freeze
+
+    def escape(text) = text.to_s.gsub(/[&<>"]/, MARKUP_ESCAPES)
 
     # --- Appearance ----------------------------------------------------------
 

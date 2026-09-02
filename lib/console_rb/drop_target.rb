@@ -5,8 +5,11 @@ module ConsoleRb
   # prompt; dropping text types the text. A file that has no local path (a
   # remote URI) is typed as its URI instead.
   class DropTarget
-    def initialize(on_drop:)
+    include I18n
+
+    def initialize(on_drop:, on_error: nil)
       @on_drop = on_drop
+      @on_error = on_error
     end
 
     def build
@@ -54,7 +57,14 @@ module ConsoleRb
       when String then value
       end
     rescue StandardError => e
-      warn "console-rb: could not handle drop: #{e.message}"
+      @on_error&.call(
+        p_('toast-message', "Couldn't Paste"),
+        p_('spad-message',
+           'An unexpected error occurred whilst reading the dropped content. ' \
+           'Please include the following information if you report the error.'),
+        content: e.message,
+        flags: %i[show_report show_sys_info]
+      )
       nil
     end
 

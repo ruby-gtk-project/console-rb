@@ -13,10 +13,17 @@ module ConsoleRb
       \\____/\\____/_/ /_/____/\\____/_/\\___/
     ART
 
+    def initialize(root: nil)
+      @root = root
+    end
+
     def present(parent) = dialog.present(parent)
 
     def dialog
       @dialog ||= Adwaita::AboutDialog.new.tap do |about|
+        about.debug_info = SystemInfo.report(@root)
+        about.debug_info_filename = 'console-rb-info.txt'
+        about.translator_credits = _('translator-credits')
         about.application_name = 'Console'
         about.application_icon = 'utilities-terminal'
         about.version = VERSION
@@ -36,6 +43,8 @@ module ConsoleRb
       puts LOGO
       puts "console-rb #{VERSION} — a Ruby GTK4 port of GNOME Console"
       puts HOMEPAGE_URL
+      puts
+      puts SystemInfo.report
     end
   end
 end
