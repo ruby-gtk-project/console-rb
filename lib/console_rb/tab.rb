@@ -74,7 +74,9 @@ module ConsoleRb
     # --- Lifecycle -----------------------------------------------------------
 
     def start
-      terminal.terminal.pty = Vte::Pty.new(Vte::PtyFlags::DEFAULT, nil)
+      terminal.terminal.pty = Vte::Pty.new(Vte::PtyFlags::DEFAULT, nil).tap do |pty|
+        Termios.set_flow_control(pty.fd, @settings.software_flow_control?)
+      end
       spawn
     end
 
@@ -115,12 +117,15 @@ module ConsoleRb
 
     # TERM_PROGRAM lets scripts recognise the terminal; TERM is what actually
     # drives terminfo lookups in the child.
+    # The desktop's proxy settings are folded in so command-line tools inherit
+    # them, then TERM and friends are forced on top.
     def environment
-      ENV.to_h.merge(
-        'TERM_PROGRAM' => 'console-rb',
-        'TERM_PROGRAM_VERSION' => VERSION,
-        'TERM' => 'xterm-256color'
-      ).map { |key, value| "#{key}=#{value}" }
+      ENV.to_h
+         .merge(ProxyInfo.new.environment)
+         .merge('TERM_PROGRAM' => 'console-rb',
+                'TERM_PROGRAM_VERSION' => VERSION,
+                'TERM' => 'xterm-256color')
+         .map { |key, value| "#{key}=#{value}" }
     end
 
     def status_changed(flags)

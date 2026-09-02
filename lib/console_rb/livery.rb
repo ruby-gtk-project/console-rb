@@ -16,6 +16,57 @@ module ConsoleRb
     def palette_for(theme)
       theme == :day ? (day || night) : night
     end
+
+    # --- Serialised form, as stored in the `custom-liveries` setting ---------
+
+    def to_h
+      {
+        'uuid' => uuid,
+        'name' => name,
+        'night' => night.to_h,
+        'day' => day&.to_h
+      }.compact
+    end
+
+    def self.from_h(hash)
+      hash['night'].then do |night|
+        next nil unless hash['uuid'] && night
+
+        new(uuid: hash['uuid'],
+            name: hash['name'],
+            night: Palette.from_h(night),
+            day: hash['day'] && Palette.from_h(hash['day']))
+      end
+    end
+
+    # --- Key file, as used by import/export ----------------------------------
+
+    META_GROUP = 'Livery'
+
+    def self.import(path)
+      GLib::KeyFile.new.tap { |key_file| key_file.load_from_file(path, :none) }.then do |key_file|
+        new(uuid: key_file.get_string(META_GROUP, 'UUID'),
+            name: optional(key_file, 'Name'),
+            night: Palette.from_key_file(key_file, 'Night'),
+            day: (Palette.from_key_file(key_file, 'Day') if key_file.has_group?('Day')))
+      end
+    end
+
+    def self.optional(key_file, key)
+      key_file.get_string(META_GROUP, key)
+    rescue StandardError
+      nil
+    end
+
+    def export(path)
+      GLib::KeyFile.new.tap do |key_file|
+        key_file.set_string(META_GROUP, 'UUID', uuid)
+        key_file.set_string(META_GROUP, 'Name', name.to_s) if name
+        night.export_to_key_file(key_file, 'Night')
+        day&.export_to_key_file(key_file, 'Day')
+        File.write(path, key_file.to_data)
+      end
+    end
   end
 
   # The built-in liveries. Upstream also persists user-defined liveries into the
@@ -76,10 +127,18 @@ module ConsoleRb
       )
     end
 
-    def all = @all ||= [standard, linux, xterm]
+    def built_in = @built_in ||= [standard, linux, xterm]
 
     def fallback = standard
 
-    def find(uuid) = all.find { |livery| livery.uuid == uuid } || fallback
+    # User-defined liveries live in the `custom-liveries` setting and shadow a
+    # built-in of the same uuid, so a user can retheme the default.
+    def all(custom = [])
+      (built_in + custom).reverse.uniq(&:uuid).reverse
+    end
+
+    def find(uuid, custom = [])
+      all(custom).find { |livery| livery.uuid == uuid } || fallback
+    end
   end
 end

@@ -207,6 +207,43 @@ class ActionsTest
       end
     end
 
+    step('the font picker builds') do
+      ConsoleRb::FontPicker.new(
+        initial_font: Pango::FontDescription.new('Monospace 11'),
+        on_select: ->(_font) {}
+      ).build
+    end
+
+    step('the font picker lists only monospace families') do
+      ConsoleRb::FontPicker.new(
+        initial_font: Pango::FontDescription.new('Monospace 11'),
+        on_select: ->(_font) {}
+      ).tap do |picker|
+        picker.build
+        picker.filtered_model.n_items.then do |count|
+          raise 'no monospace families found' if count.zero?
+
+          count.times do |index|
+            picker.filtered_model.get_item(index).then do |family|
+              raise "#{family.name} is not monospace" unless family.monospace?
+            end
+          end
+        end
+      end
+    end
+
+    step('the font picker returns a sized font description') do
+      ConsoleRb::FontPicker.new(
+        initial_font: Pango::FontDescription.new('Monospace 13'),
+        on_select: ->(_font) {}
+      ).tap do |picker|
+        picker.build
+        picker.current_font.then do |font|
+          raise "got size #{font.size}" unless (font.size / Pango::SCALE) == 13
+        end
+      end
+    end
+
     step('the shortcuts dialog builds and presents') do
       ConsoleRb::ShortcutsDialog.new.tap do |dialog|
         dialog.present(window.window)
@@ -409,6 +446,75 @@ class ActionsTest
       ConsoleRb::DropTarget.new(on_drop: ->(_text) {}).build
     end
 
+    step('flow control can be disabled and re-enabled on a pty') do
+      Vte::Pty.new(Vte::PtyFlags::DEFAULT, nil).then do |pty|
+        raise 'disable failed' unless ConsoleRb::Termios.set_flow_control(pty.fd, false)
+        raise 'IXON still set' unless iflag(pty.fd).nobits?(ConsoleRb::Termios::IXON)
+
+        raise 'enable failed' unless ConsoleRb::Termios.set_flow_control(pty.fd, true)
+        raise 'IXON not set' if iflag(pty.fd).nobits?(ConsoleRb::Termios::IXON)
+      end
+    end
+
+    step('proxy settings map to environment variables') do
+      ConsoleRb::ProxyInfo.new.environment.then do |env|
+        raise "not a hash: #{env.class}" unless env.is_a?(Hash)
+        raise 'unpaired case variants' unless env.keys.all? { |k| env.key?(k.upcase) }
+      end
+    end
+
+    step('a livery round-trips through its stored form') do
+      ConsoleRb::Liveries.xterm.then do |original|
+        ConsoleRb::Livery.from_h(JSON.parse(JSON.generate(original.to_h))).then do |back|
+          raise 'uuid lost' unless back.uuid == original.uuid
+          raise 'name lost' unless back.name == original.name
+          raise 'colours lost' unless back.night.colours.length == 16
+          unless (back.night.colours[1].red - original.night.colours[1].red).abs < 0.001
+            raise 'colour drifted'
+          end
+        end
+      end
+    end
+
+    step('a livery round-trips through a key file') do
+      require 'tmpdir'
+      Dir.mktmpdir do |dir|
+        File.join(dir, 'test.livery').then do |path|
+          ConsoleRb::Liveries.standard.export(path)
+          ConsoleRb::Livery.import(path).then do |imported|
+            raise 'uuid lost' unless imported.uuid == ConsoleRb::Liveries.standard.uuid
+            raise 'colours lost' unless imported.night.colours.length == 16
+            raise 'day palette lost' if imported.day.nil?
+          end
+        end
+      end
+    end
+
+    step('a custom livery persists and can be selected') do
+      ConsoleRb::Livery.new(uuid: 'test-uuid', name: 'Test',
+                            night: ConsoleRb::Liveries.linux.night).then do |livery|
+        settings.add_custom_livery(livery)
+        raise 'not stored' unless settings.custom_liveries.map(&:uuid) == ['test-uuid']
+
+        settings.settings.set_string('livery', 'test-uuid')
+        raise "selected #{settings.livery.name}" unless settings.livery.name == 'Test'
+
+        settings.remove_custom_livery('test-uuid')
+        raise 'not removed' unless settings.custom_liveries.empty?
+        raise 'no fallback' unless settings.livery.uuid == ConsoleRb::Liveries::KGX_UUID
+      end
+    end
+
+    step('a malformed custom livery is skipped, not fatal') do
+      settings.settings.set_string('custom-liveries', '{"bad": {"uuid": "x"}}')
+      raise 'should have been skipped' unless settings.custom_liveries.empty?
+
+      settings.settings.set_string('custom-liveries', 'not json at all')
+      raise 'should have been skipped' unless settings.custom_liveries.empty?
+
+      settings.settings.set_string('custom-liveries', '{}')
+    end
+
     step('--title is parsed') do
       ConsoleRb::CLI.new(['--title', 'Hello']).parse.options.then do |options|
         raise "got #{options[:title].inspect}" unless options[:title] == 'Hello'
@@ -463,6 +569,16 @@ class ActionsTest
 
   def translator
     @translator ||= Class.new { include ConsoleRb::I18n }.new
+  end
+
+  # Reads the termios input flags straight back off the descriptor, so the
+  # flow-control check tests the bits rather than the return code.
+  def iflag(file_descriptor)
+    Fiddle::Pointer.malloc(ConsoleRb::Termios::STRUCT_SIZE, Fiddle::RUBY_FREE).then do |buffer|
+      raise 'tcgetattr failed' unless ConsoleRb::Termios.tcgetattr.call(file_descriptor, buffer).zero?
+
+      buffer[0, 4].unpack1('L')
+    end
   end
 
   def report

@@ -157,10 +157,42 @@ module ConsoleRb
 
     # --- Livery --------------------------------------------------------------
 
-    def livery = Liveries.find(settings.get_string('livery'))
+    def livery = Liveries.find(settings.get_string('livery'), custom_liveries)
 
     def livery=(value)
       settings.set_string('livery', value.uuid)
+    end
+
+    def liveries = Liveries.all(custom_liveries)
+
+    # `custom-liveries` holds a JSON object keyed by uuid — see Palette for why
+    # this is not the GVariant vardict upstream uses. A malformed entry is
+    # skipped with a warning rather than taking the whole app down.
+    def custom_liveries
+      JSON.parse(settings.get_string('custom-liveries')).filter_map do |_uuid, hash|
+        Livery.from_h(hash)
+      rescue StandardError => e
+        warn "console-rb: ignoring malformed custom livery: #{e.message}"
+        nil
+      end
+    rescue JSON::ParserError => e
+      warn "console-rb: could not read custom liveries: #{e.message}"
+      []
+    end
+
+    def add_custom_livery(livery)
+      write_custom_liveries(
+        custom_liveries.reject { |existing| existing.uuid == livery.uuid }.push(livery)
+      )
+    end
+
+    def remove_custom_livery(uuid)
+      write_custom_liveries(custom_liveries.reject { |livery| livery.uuid == uuid })
+    end
+
+    def write_custom_liveries(liveries)
+      liveries.to_h { |livery| [livery.uuid, livery.to_h] }
+              .then { |table| settings.set_string('custom-liveries', JSON.generate(table)) }
     end
 
     # --- Window geometry -----------------------------------------------------

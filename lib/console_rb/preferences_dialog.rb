@@ -83,19 +83,22 @@ module ConsoleRb
       @settings.custom_font_string.empty? ? @settings.system_monospace_font : @settings.custom_font_string
     end
 
+    # Upstream pushes a navigation page rather than opening a system font
+    # chooser, because the list has to be filtered to monospace families.
     def choose_font
-      Gtk::FontDialog.new.tap do |chooser|
-        chooser.title = _('Terminal Font')
-        chooser.choose_font(dialog.root, initial_font, nil) do |source, result|
-          source.choose_font_finish(result)&.then do |chosen|
-            @settings.custom_font_string = chosen.to_s
-            @settings.use_system_font = false
-            sync
-          end
-        rescue StandardError
-          nil
-        end
+      FontPicker.new(
+        initial_font: initial_font,
+        on_select: ->(font) { font_chosen(font) }
+      ).tap { |picker| dialog.push_subpage(picker.build) }
+    end
+
+    def font_chosen(font)
+      font&.then do |chosen|
+        @settings.custom_font_string = chosen.to_s
+        @settings.use_system_font = false
+        sync
       end
+      dialog.pop_subpage
     end
 
     def initial_font = Pango::FontDescription.new(font_label)

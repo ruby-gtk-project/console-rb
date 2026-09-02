@@ -58,6 +58,12 @@
     <key name="livery" type="s">
       <default>'9f1374fd-f199-429f-bae6-9cf1260f6e3e'</default>
     </key>
+    <!-- A JSON object keyed by uuid. Upstream uses a GVariant a{sv}; the Ruby
+         GLib::Variant binding cannot read a vardict, so this port stores the
+         same data as JSON. See PORTING.md. -->
+    <key name="custom-liveries" type="s">
+      <default>'{}'</default>
+    </key>
     <key name="always-stop-train" type="b">
       <default>false</default>
       <summary>Bypass the 'Close Tab?' or 'Close Window?' dialogues</summary>
