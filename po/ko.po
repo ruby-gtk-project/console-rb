@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: console main\n"
 "Report-Msgid-Bugs-To: https://gitlab.gnome.org/GNOME/console/-/issues/\n"
-"POT-Creation-Date: 2025-12-28 14:23+0000\n"
-"PO-Revision-Date: 2026-03-01 23:25+0900\n"
+"POT-Creation-Date: 2026-08-31 02:34+0000\n"
+"PO-Revision-Date: 2026-09-01 00:36+0900\n"
 "Last-Translator: DaeHyun Sung <sungdh86+git@gmail.com>\n"
 "Language-Team: Korean <gnome-kr@googlegroups.com>\n"
 "Language: ko\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Poedit 3.8\n"
+"X-Generator: Poedit 3.9\n"
 
 #: data/org.gnome.Console.desktop.in.in:2
 #: data/org.gnome.Console.metainfo.xml.in.in:8 src/kgx-application.h:26
@@ -40,6 +40,10 @@ msgstr "새 창"
 msgid "New Tab"
 msgstr "새 탭"
 
+#: data/org.gnome.Console.gschema.xml.in:66
+msgid "Bypass the ‘Close Tab?’ or ‘Close Window?’ dialogues"
+msgstr "‘이 탭을 닫겠습니까?’ 또는 ‘이 창을 닫겠습니까?’ 대화상자를 건너뜁니다"
+
 #: data/org.gnome.Console.metainfo.xml.in.in:9 src/kgx-about.c:102
 msgid "Terminal Emulator"
 msgstr "터미널 에뮬레이터"
@@ -52,7 +56,8 @@ msgstr "그놈 데스크톱용 간단한 사용자 친화적인 터미널 에뮬
 msgid "Terminal window"
 msgstr "터미널 창"
 
-#: data/org.gnome.Console.metainfo.xml.in.in:564 src/kgx-about.c:166
+#: data/org.gnome.Console.metainfo.xml.in.in:673
+#: data/org.gnome.Console.metainfo.xml.in.in:675 src/kgx-about.c:166
 msgid "The GNOME Project"
 msgstr "그놈 프로젝트"
 
@@ -255,7 +260,7 @@ msgstr "%i 열 %i 행"
 #. * this string will only be seen when the running program has
 #. * failed to set a title, and exists purely to avoid blank tabs
 #.
-#: src/kgx-pages.c:508
+#: src/kgx-pages.c:513
 #, c-format
 msgid "Tab %i"
 msgstr "탭 %i"
