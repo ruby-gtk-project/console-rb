@@ -14,8 +14,7 @@ on:
 
 permissions:
   contents: write
-  workflows: write  # it commits .github/workflows/*.lock.yml — needs this scope
-  issues: write     # the failure-issue step
+  issues: write  # the failure-issue step
 
 concurrency:
   group: compile-agentic-workflows
@@ -39,6 +38,10 @@ jobs:
         run: gh aw compile
 
       - name: Commit the lock files
+        env:
+          # A GITHUB_TOKEN cannot push workflow files, so the push carries the
+          # one PAT that can.
+          GH_TOKEN: ${{ secrets.GH_AW_PROJECT_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -49,7 +52,9 @@ jobs:
             exit 0
           fi
           git commit -m "Compile agentic workflows"
-          git push
+          url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git pull --rebase --autostash "$url" ruby
+          git push "$url" HEAD:ruby
 
       - name: File an issue when the run failed
         if: failure()
