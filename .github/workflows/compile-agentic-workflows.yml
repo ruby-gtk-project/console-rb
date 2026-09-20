@@ -25,7 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - # No checkout credentials: the workflow-file push must carry the PAT,
+        # and the checkout's GITHUB_TOKEN extraheader would compete with it.
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install gh-aw
         env:
@@ -40,21 +44,22 @@ jobs:
       - name: Commit the lock files
         env:
           # A GITHUB_TOKEN cannot push workflow files, so the push carries the
-          # one PAT that can.
+          # one PAT that can — via gh's credential helper, the same mechanism
+          # the scaffold sync pushes with.
           GH_TOKEN: ${{ secrets.GH_AW_PROJECT_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
           git add .github/workflows/*.lock.yml
           if git diff --cached --quiet; then
             echo "lock files already in sync"
             exit 0
           fi
           git commit -m "Compile agentic workflows"
-          url="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          git pull --rebase --autostash "$url" ruby
-          git push "$url" HEAD:ruby
+          git pull --rebase --autostash origin ruby
+          git push origin HEAD:ruby
 
       - name: File an issue when the run failed
         if: failure()
