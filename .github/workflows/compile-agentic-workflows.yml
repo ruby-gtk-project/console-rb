@@ -14,7 +14,8 @@ on:
 
 permissions:
   contents: write
-  issues: write  # the failure-issue step
+  workflows: write  # it commits .github/workflows/*.lock.yml — needs this scope
+  issues: write     # the failure-issue step
 
 concurrency:
   group: compile-agentic-workflows
