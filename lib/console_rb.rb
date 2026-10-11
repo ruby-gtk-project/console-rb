@@ -8,7 +8,6 @@ require 'gtk4'
 require 'adwaita'
 require 'vte4'
 
-require_relative 'console_rb/version'
 require_relative 'console_rb/i18n'
 require_relative 'console_rb/shortcuts'
 require_relative 'console_rb/regex'
@@ -37,3 +36,4 @@ require_relative 'console_rb/window'
 require_relative 'console_rb/cli'
 require_relative 'console_rb/application'
 require_relative 'console_rb/launcher'
+require_relative "console_rb/version"

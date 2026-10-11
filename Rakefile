@@ -42,5 +42,3 @@ desc 'Lint'
 task :lint do
   sh 'rubocop'
 end
-
-task default: %i[schema locale test lint]
