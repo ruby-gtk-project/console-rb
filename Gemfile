@@ -61,3 +61,5 @@ group :development do
 end
 
 gem "gem_kit"
+gem "gtk4"
+gem "adwaita"
