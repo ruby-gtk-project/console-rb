@@ -11,11 +11,15 @@ tree, CSS classes, signals, menus). The rows below union both halves.
 
 | | upstream | port |
 |---|---|---|
-| user-facing component files | 21 | 19 present, 2 with no file of their own |
-| infrastructure / model files | 15 | 11 present, 4 folded into other files |
-| bundled app icons (`src/icons/scalable/status`) | 8 | 0 |
+| user-facing component files | 21 | 21 present |
+| infrastructure / model files | 15 | 15 present (3 upstream files have no Ruby counterpart by design) |
+| bundled app icons (`src/icons/scalable/status`) | 8 | 8 under `data/icons/hicolor/scalable/status` |
 | GSettings keys | 17 | 17 |
-| `po/` catalogue | 64 languages | 64 under `data/locale` |
+| `po/` catalogue | 61 languages | 61 `po/*.po`, 61 under `data/locale` |
+
+Revised after `464a7a0` ("Port the spad source, watcher, livery manager, depot,
+despatcher, paste dialog and simple tab") and the icon vendoring: every upstream
+user-facing component now has a `lib/*.rb` file of its own.
 
 ## Windows, views and pages
 
@@ -90,12 +94,11 @@ Present.
 Actions: `tab.show-spad`.
 
 ### `src/kgx-simple-tab.c` + `src/kgx-simple-tab.ui` → `lib/console_rb/simple_tab.rb` — the scrolled terminal inside a tab
-**No file of its own.** The widgets (`Gtk.ScrolledWindow` with CSS `terminal`,
-`hscrollbar-policy: never`, holding a `KgxTerminal`) and the `tab-tooltip`
-binding are built inline in `tab.rb` (`#terminal_scroller`, `#terminal`). The
-behaviour is present; the house rule "one upstream source file → one
-`lib/<thing>.rb`" is not. Upstream also subclasses its own widget here
-(`KgxSimpleTab : KgxTab`), a hierarchy the port flattens.
+Present (71 lines). `Gtk.ScrolledWindow` with CSS `terminal`,
+`hscrollbar-policy: never`, holding a `KgxTerminal`, plus the `tab-tooltip`
+binding. Upstream subclasses its own widget here (`KgxSimpleTab : KgxTab`); the
+port composes instead of inheriting, so the hierarchy is flattened but every
+widget, CSS class and signal is reproduced.
 
 ### `src/kgx-terminal.c` + `src/kgx-terminal.ui` → `lib/console_rb/terminal.rb` — the VTE widget
 Present.
@@ -142,10 +145,9 @@ selection none, not focusable) repeating one `Adw.ActionRow` per running
 command. Headings and bodies are plural-aware (`g_dngettext`).
 
 ### `src/kgx-paste-dialog.c` → `lib/console_rb/paste_dialog.rb` — admin paste confirmation
-**No file of its own.** `Adw.AlertDialog` (heading "You are pasting a command
-that runs as an administrator", CSS `numeric`, responses `cancel` / `paste`
-destructive, body truncated to 8000 chars) is built inline in
-`terminal.rb#confirm_paste`. Behaviour present, file missing.
+Present (74 lines). `Adw.AlertDialog`, heading "You are pasting a command that
+runs as an administrator", CSS `numeric`, responses `cancel` / `paste`
+(destructive), body truncated to 8000 chars. Called from `terminal.rb`.
 
 ### `src/kgx-spad.c` + `src/kgx-spad.ui` → `lib/console_rb/spad.rb` — "Error Details"
 Present.
@@ -231,17 +233,17 @@ Present. Application actions: `app.new-window`, `app.new-tab`,
 |---|---|---|
 | `src/kgx-settings.c`, `src/kgx-settings.ui.in`, `data/org.gnome.Console.gschema.xml.in` | `lib/console_rb/settings.rb`, `data/schemas` | yes — all 17 keys and the `Theme` enum (`auto`/`night`/`day`/`hacker`) |
 | `src/kgx-livery.c` | `lib/console_rb/livery.rb` | yes |
-| `src/kgx-livery-manager.c` | `lib/console_rb/livery_manager.rb` | **no file** — custom-livery storage folded into `settings.rb` / `livery.rb` |
+| `src/kgx-livery-manager.c` | `lib/console_rb/livery_manager.rb` | yes (66 lines) |
 | `src/kgx-palette.c`, `src/kgx-colour-utils.c` | `lib/console_rb/palette.rb` | yes |
 | `src/kgx-train.c` | `lib/console_rb/train.rb` | yes |
-| `src/kgx-watcher.c` | `lib/console_rb/watcher.rb` | **no file** — `ConsoleRb::Watcher` lives in `train.rb` |
+| `src/kgx-watcher.c` | `lib/console_rb/watcher.rb` | yes (80 lines) |
 | `src/kgx-process.c`, `src/pids/*` | `lib/console_rb/process_info.rb` | yes |
 | `src/kgx-proxy-info.c` | `lib/console_rb/proxy_info.rb` | yes |
 | `src/kgx-system-info.c` | `lib/console_rb/system_info.rb` | yes |
 | `src/kgx-drop-target.c` | `lib/console_rb/drop_target.rb` | yes |
-| `src/kgx-depot.c` | `lib/console_rb/depot.rb` | **no file** — spawning inline in `tab.rb` + `termios.rb` |
-| `src/kgx-despatcher.c` | `lib/console_rb/despatcher.rb` | **no file** — `Gtk::UriLauncher` calls inline in `terminal.rb` / `spad.rb` |
-| `src/kgx-spad-source.c/.h` | `lib/console_rb/spad_source.rb` | **no file** — `Tab#throw_spad` plays the interface's part |
+| `src/kgx-depot.c` | `lib/console_rb/depot.rb` | yes (84 lines) — one depot per application, see `application.rb:50` |
+| `src/kgx-despatcher.c` | `lib/console_rb/despatcher.rb` | yes (123 lines) — one despatcher per application |
+| `src/kgx-spad-source.c/.h` | `lib/console_rb/spad_source.rb` | yes (62 lines) — the `spad-thrown` interface |
 | `src/kgx-utils.c`, `src/kgx-*-closures.h` | — | closures reimplemented inline where used |
 | `src/kgx-templated.c`, `src/kgx.gresource.xml.in`, `src/kgx-marshals.list` | — | n/a: no GtkBuilder templates or GResource in the Ruby port |
 
@@ -250,9 +252,9 @@ Present. Application actions: `app.new-window`, `app.new-tab`,
 | Upstream | Port | Present |
 |---|---|---|
 | `src/style.css` (181 lines; `.terminal-window.translucent/.root/.remote/.playbox`, `.floating-bar`, `kgx-empty`, `.exit-info`, `themeswitcher`, `.font-picker`, `.drop-highlight`, `.error-message`) | `data/style.css` | yes — same 11 selectors, `kgx-empty` → `.console-rb-empty` |
-| `src/icons/scalable/status/*.svg` — `bell-outline-symbolic`, `emblem-ok-symbolic`, `external-link-symbolic`, `status-playbox-symbolic`, `status-privileged-symbolic`, `status-regular-symbolic`, `status-remote-symbolic`, `theme-check-symbolic` | `data/icons/...` | **no** — none of the eight are vendored; the port substitutes stock names (`object-select-symbolic`, `channel-secure-symbolic`, `network-server-symbolic`) and references `external-link-symbolic` without shipping it |
+| `src/icons/scalable/status/*.svg` — `bell-outline-symbolic`, `emblem-ok-symbolic`, `external-link-symbolic`, `status-playbox-symbolic`, `status-privileged-symbolic`, `status-regular-symbolic`, `status-remote-symbolic`, `theme-check-symbolic` | `data/icons/hicolor/scalable/status/` | yes — all eight vendored and registered (`application.rb:142`). Two call sites still ask for a stock name instead of the bundled one: `theme_switcher.rb:87` uses `object-select-symbolic` where upstream uses `theme-check-symbolic`, and `spad.rb:15` uses it where upstream uses `emblem-ok-symbolic` |
 | `data/org.gnome.Console.desktop.in.in`, `.metainfo.xml.in.in`, `.service.in`, app SVGs | `data/` equivalents | yes |
-| `po/` — 64 languages, `po/POTFILES.in` listing 30 sources | `po/`, `data/locale` | yes |
+| `po/` — 61 `*.po`, `po/LINGUAS`, `po/POTFILES.in` listing 30 sources | `po/` (61), `data/locale` (61) | yes |
 
 ## Not from upstream
 
@@ -262,11 +264,20 @@ with no upstream counterpart and no `require` from `lib/console_rb.rb`.
 
 ## Gaps to close
 
-1. Vendor the eight bundled status icons and use them instead of stock
-   substitutes — `theme-check-symbolic` in the theme switcher, `status-*` on
-   tab indicators, `external-link-symbolic` in the spad.
-2. Split `paste_dialog.rb` out of `terminal.rb` and `simple_tab.rb` out of
-   `tab.rb` so each upstream source file has one port file.
-3. Give `watcher.rb`, `livery_manager.rb`, `depot.rb`, `despatcher.rb` and
-   `spad_source.rb` files of their own.
-4. Delete the `lib/console.rb` / `lib/console/application.rb` scaffold.
+File-level parity is reached: every upstream user-facing component and every
+model/helper has its own `lib/*.rb`. What remains:
+
+1. Point the two remaining stock-icon call sites at the bundled icons —
+   `theme_switcher.rb:87` → `theme-check-symbolic`,
+   `spad.rb:15` (`COPIED_ICON`) → `emblem-ok-symbolic`.
+2. Delete the `lib/console.rb` / `lib/console/application.rb` scaffold — it has
+   no upstream counterpart and nothing requires it.
+3. Add the house-style "ported from <upstream file>" class comment to the files
+   that predate the convention. Only `tab.rb`, `simple_tab.rb`,
+   `paste_dialog.rb`, `depot.rb`, `despatcher.rb`, `livery_manager.rb`,
+   `spad_source.rb` and `watcher.rb` carry it; the other 29 name upstream only
+   in passing or not at all.
+4. Behavioural gaps are tracked in `COMPONENT_PARITY.md`, not here — notably
+   `Adwaita::ToolbarView#top_bar_style` never set to `raised` in
+   `fullscreen_box.rb`, which leaves every `.top-bar.raised` rule in
+   `data/style.css` dead (coloured root/SSH/toolbox header bars, visual bell).
