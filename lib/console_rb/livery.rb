@@ -102,8 +102,9 @@ module ConsoleRb
         name: nil,
         night: Palette.from_hex(foreground: '#ffffff', background: '#1c1c1f',
                                 transparency: 0.04, colours: KGX_COLOURS),
-        # Upstream has a "TODO: Have some day colours" here and reuses the night
-        # ANSI colours for the light palette; this port matches that.
+        # Upstream notes in kgx-livery-manager.c that it has no dedicated day
+        # colours yet and reuses the night ANSI colours for its light palette;
+        # this port matches that.
         day: Palette.from_hex(foreground: '#000000', background: '#ffffff',
                               transparency: 0.01, colours: KGX_COLOURS)
       )

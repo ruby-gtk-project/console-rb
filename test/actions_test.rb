@@ -534,8 +534,9 @@ class ActionsTest
     end
 
     step('a tab opened for a command stays after it exits') do
-      ConsoleRb::Tab.new(settings: settings, watcher: application.watcher,
-                         command: %w[true], close_on_quit: false).then do |tab|
+      ConsoleRb::SimpleTab.new(settings: settings, watcher: application.watcher,
+                               depot: application.depot, despatcher: application.despatcher,
+                               command: %w[true], close_on_quit: false).then do |tab|
         pages.add(tab)
         pages.tab_count.then do |before|
           tab.died(:info, 'exited')

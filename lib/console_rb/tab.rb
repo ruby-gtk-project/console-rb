@@ -1,28 +1,35 @@
 # frozen_string_literal: true
 
 module ConsoleRb
-  # One terminal session: the search bar, the terminal itself, and the banner
-  # that appears when the child process exits and the tab goes read-only.
+  # Ported from src/kgx-tab.c.
+  #
+  # The parts of a terminal session that do not depend on how the shell got
+  # started: the search bar, the terminal itself, the banner that appears when
+  # the child process exits and the tab goes read-only, and the toast overlay
+  # errors surface in. Starting a process is a subclass's job — see SimpleTab,
+  # which is the only kind of tab this port has, exactly as upstream.
   class Tab
     include I18n
+    include SpadSource
 
     @next_id = 0
 
     class << self
       attr_accessor :next_id
 
-      def allocate_id = self.next_id += 1
+      # One sequence shared by every kind of tab: app.focus-page addresses tab
+      # ids globally, so a subclass must not start counting again from one.
+      def allocate_id = Tab.next_id += 1
     end
 
     attr_reader :id, :title, :path, :train, :status
 
-    def initialize(settings:, watcher:, initial_work_dir: nil, command: nil,
-                   tab_title: nil, close_on_quit: true)
+    def initialize(settings:, watcher:, despatcher: Despatcher.new, tab_title: nil,
+                   close_on_quit: true)
       @id = self.class.allocate_id
       @settings = settings
       @watcher = watcher
-      @initial_work_dir = initial_work_dir
-      @command = command
+      @despatcher = despatcher
       @title = tab_title
       @explicit_title = !tab_title.nil?
       @close_on_quit = close_on_quit
@@ -68,6 +75,11 @@ module ConsoleRb
       terminal.build
       terminal_scroller.child = terminal.terminal
 
+      # The terminal is a spad source in its own right; the tab is what has a
+      # toast overlay to show one in, so it takes the terminal's errors too.
+      terminal.on_spad_thrown { |title, bundle| show_spad(title, bundle) }
+      on_spad_thrown { |title, bundle| show_spad(title, bundle) }
+
       drop_target.tap do |drop|
         drop.widget = root
         terminal.terminal.add_controller(drop.build)
@@ -78,61 +90,16 @@ module ConsoleRb
 
     # --- Lifecycle -----------------------------------------------------------
 
-    def start
-      terminal.terminal.pty = Vte::Pty.new(Vte::PtyFlags::DEFAULT, nil).tap do |pty|
-        Termios.set_flow_control(pty.fd, @settings.software_flow_control?)
-      end
-      spawn
-    end
-
-    def spawn
-      terminal.terminal.spawn_async(
-        Vte::PtyFlags::DEFAULT,
-        working_directory,
-        argv,
-        environment,
-        GLib::Spawn::SEARCH_PATH,
-        -1,
-        nil
-      ) do |_term, pid, _error|
-        # The bindings hand back a bogus GError object even on success, so a
-        # valid pid is the only reliable success signal here.
-        pid.to_i.positive? ? started(pid.to_i) : failed_to_start
-      end
-    end
-
-    def started(pid)
+    # Called by a subclass's #start once the depot has a live process. The train
+    # is already registered with the watcher by then.
+    def started(train)
       @working = false
       empty.working = false
       stack.visible_child = terminal_scroller
-      @train = Train.new(pid).tap do |train|
-        train.on_change { |flags| status_changed(flags) }
-        @watcher.add(train)
+      @train = train.tap do |t|
+        t.on_change { |flags| status_changed(flags) }
       end
       notify
-    end
-
-    def failed_to_start
-      died(:error,
-           format(_('<b>Failed to start</b> — %s'), _('the shell could not be spawned')),
-           success: false)
-    end
-
-    def working_directory = @initial_work_dir || Dir.home
-
-    def argv = @command && !@command.empty? ? @command : @settings.shell
-
-    # TERM_PROGRAM lets scripts recognise the terminal; TERM is what actually
-    # drives terminfo lookups in the child.
-    # The desktop's proxy settings are folded in so command-line tools inherit
-    # them, then TERM and friends are forced on top.
-    def environment
-      ENV.to_h
-         .merge(ProxyInfo.new.environment)
-         .merge('TERM_PROGRAM' => 'console-rb',
-                'TERM_PROGRAM_VERSION' => VERSION,
-                'TERM' => 'xterm-256color')
-         .map { |key, value| "#{key}=#{value}" }
     end
 
     def status_changed(flags)
@@ -145,14 +112,22 @@ module ConsoleRb
     # for a plain shell rather than for an explicit command.
     def died(type, message, success: true)
       exit_message.markup = message
-      type == :error ? exit_revealer.add_css_class('error') : exit_revealer.remove_css_class('error')
+      mark_exit_error(type == :error)
       exit_revealer.reveal_child = true
-      @train&.then { |train| @watcher.remove(train) }
+      @train&.then { |train| @watcher.unwatch(train) }
       @train = nil
       notify
       @exit_listeners.each(&:call)
       @exit_listeners = []
       @on_died&.call(self, success && @close_on_quit)
+    end
+
+    def mark_exit_error(errored)
+      if errored
+        exit_revealer.add_css_class('error')
+      else
+        exit_revealer.remove_css_class('error')
+      end
     end
 
     def child_exited(status)
@@ -168,7 +143,7 @@ module ConsoleRb
 
     def running_commands = @train&.running_commands || []
 
-    def close = @train&.then { |train| @watcher.remove(train) }
+    def close = @train&.then { |train| @watcher.unwatch(train) }
 
     # --- Search --------------------------------------------------------------
 
@@ -251,13 +226,11 @@ module ConsoleRb
     def terminal
       @terminal ||= Terminal.new(
         settings: @settings,
+        despatcher: @despatcher,
         on_zoom: ->(direction) { zoom(direction) },
         on_bell: -> { bell },
         on_child_exit: ->(status) { child_exited(status) },
-        on_path_change: ->(path) { path_changed(path) },
-        on_notify: lambda { |title, body, content: nil, flags: []|
-          throw_spad(title: title, body: body, content: content, flags: flags)
-        }
+        on_path_change: ->(path) { path_changed(path) }
       )
     end
 
@@ -331,29 +304,41 @@ module ConsoleRb
     # path, so the tab keeps whatever title it already had.
     def path_changed(path)
       @path = path
-      path&.path&.then { |local| @title = File.basename(local) unless @explicit_title }
+      retitle(path)
       notify
+    end
+
+    # An explicit --title is never overwritten by the shell's working directory.
+    def retitle(path)
+      if @explicit_title
+        nil
+      else
+        path&.path&.then { |local| @title = File.basename(local) }
+      end
     end
 
     def display_title
       @title || terminal.terminal.window_title || _('Console')
     end
 
-    def tooltip = @path&.path
+    # Upstream binds the tooltip through kgx_file_as_display_or_uri: the local
+    # path when there is one, the whole uri when the cwd is remote.
+    def tooltip = @path&.then { |file| file.path || file.uri }
 
     def toast(message) = toast_overlay.add_toast(Adwaita::Toast.new(message))
 
-    # Errors surface as a toast carrying a "Details" button; pressing it opens
-    # the full error dialog. This is upstream's spad-thrown path.
-    def throw_spad(title:, body:, content: nil, error: nil, flags: [])
+    # The tab's own handler for the spad-thrown contract: a toast carrying a
+    # "Details" button, which opens the full error dialog. Returning true is
+    # what tells the thrower the error was taken.
+    def show_spad(title, bundle)
       Adwaita::Toast.new(title).tap do |t|
         t.button_label = p_('toast-button', '_Details')
         t.signal_connect('button-clicked') do
-          Spad.new(title: title, body: body, content: content,
-                   error: error, flags: flags).present(root)
+          Spad.new(**bundle).present(root)
         end
         toast_overlay.add_toast(t)
       end
+      true
     end
 
     def zoom(direction)

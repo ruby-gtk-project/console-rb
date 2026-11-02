@@ -47,6 +47,12 @@ module ConsoleRb
 
     def watcher = @watcher ||= Watcher.new
 
+    # One depot and one despatcher for the whole application, as upstream's
+    # KgxApplication holds, so every tab spawns and every link opens the same way.
+    def depot = @depot ||= Depot.new(watcher: watcher)
+
+    def despatcher = @despatcher ||= Despatcher.new
+
     # --- Lifecycle -----------------------------------------------------------
 
     def startup
@@ -58,6 +64,7 @@ module ConsoleRb
       settings.on_change { |key| apply_color_scheme if key == 'theme' }
 
       load_style
+      load_icons
       install_actions
       install_accelerators
       watcher.start
@@ -130,6 +137,17 @@ module ConsoleRb
 
     def apply_color_scheme
       Adwaita::StyleManager.default.color_scheme = settings.color_scheme
+    end
+
+    # The eight status icons this port ships beside its stylesheet are upstream's
+    # own, compiled into a GResource there. The icon theme has to be told where
+    # they are before anything asks for one by name.
+    def load_icons
+      Gtk::IconTheme.get_for_display(Gdk::Display.default).add_search_path(
+        File.join(__dir__, '..', '..', 'data', 'icons')
+      )
+    rescue StandardError => e
+      warn "console-rb: could not load icons: #{e.message}"
     end
 
     def load_style
@@ -238,9 +256,11 @@ module ConsoleRb
 
     def add_terminal(window: nil, working_directory: nil, command: nil, title: nil)
       (window || new_window).then do |host|
-        Tab.new(
+        SimpleTab.new(
           settings: settings,
           watcher: watcher,
+          depot: depot,
+          despatcher: despatcher,
           initial_work_dir: working_directory || host.pages.working_directory&.path,
           command: command,
           tab_title: title,

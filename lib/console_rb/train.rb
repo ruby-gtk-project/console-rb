@@ -46,42 +46,4 @@ module ConsoleRb
       end
     end
   end
-
-  # A single timer drives every train, so the /proc scan happens once per tick
-  # no matter how many tabs are open. Polling stops entirely while the app has
-  # no focused window, matching upstream's in-background handling.
-  class Watcher
-    FOREGROUND_INTERVAL = 2
-    BACKGROUND_INTERVAL = 10
-
-    def initialize
-      @trains = []
-      @in_background = false
-    end
-
-    attr_accessor :in_background
-
-    def add(train) = @trains << train
-
-    def remove(train) = @trains.delete(train)
-
-    def start
-      @start ||= GLib::Timeout.add_seconds(FOREGROUND_INTERVAL) do
-        tick
-        GLib::Source::CONTINUE
-      end
-    end
-
-    def tick
-      # Skip the scan entirely when backgrounded; the next foreground tick picks
-      # everything up again.
-      @trains.empty? || (in_background && skip_this_tick?) ||
-        ProcessInfo.all.then { |processes| @trains.each { |train| train.refresh(processes) } }
-    end
-
-    def skip_this_tick?
-      @ticks = (@ticks.to_i + 1) % (BACKGROUND_INTERVAL / FOREGROUND_INTERVAL)
-      !@ticks.zero?
-    end
-  end
 end

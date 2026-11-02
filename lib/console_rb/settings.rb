@@ -20,7 +20,16 @@ module ConsoleRb
     # Ruby bindings make awkward for a plain (non-GObject) wrapper like this.
     def on_change(&block) = @listeners << block
 
-    def notify(key) = @listeners.each { |listener| listener.call(key) }
+    def notify(key)
+      refresh_custom_liveries(key)
+      @listeners.each { |listener| listener.call(key) }
+    end
+
+    def refresh_custom_liveries(key)
+      case key
+      when 'custom-liveries' then livery_manager.custom_liveries = read_custom_liveries
+      end
+    end
 
     # --- Theme ---------------------------------------------------------------
 
@@ -157,18 +166,26 @@ module ConsoleRb
 
     # --- Livery --------------------------------------------------------------
 
-    def livery = Liveries.find(settings.get_string('livery'), custom_liveries)
+    # The manager owns the built-in and custom tables and does the resolving;
+    # this class only reads and writes the setting they come from.
+    def livery_manager
+      @livery_manager ||= LiveryManager.new(custom: read_custom_liveries)
+    end
+
+    def livery = livery_manager.find(settings.get_string('livery'))
 
     def livery=(value)
       settings.set_string('livery', value.uuid)
     end
 
-    def liveries = Liveries.all(custom_liveries)
+    def liveries = livery_manager.all
+
+    def custom_liveries = livery_manager.custom_liveries
 
     # `custom-liveries` holds a JSON object keyed by uuid — see Palette for why
     # this is not the GVariant vardict upstream uses. A malformed entry is
     # skipped with a warning rather than taking the whole app down.
-    def custom_liveries
+    def read_custom_liveries
       JSON.parse(settings.get_string('custom-liveries')).filter_map do |_uuid, hash|
         Livery.from_h(hash)
       rescue StandardError => e

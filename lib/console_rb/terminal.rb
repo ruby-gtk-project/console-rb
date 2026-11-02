@@ -5,6 +5,7 @@ module ConsoleRb
   # menu, the term.* action group, zoom-on-ctrl-scroll and palette application.
   class Terminal
     include I18n
+    include SpadSource
 
     # Link regexes adapted, as upstream's are, from Pantheon Terminal.
     USERCHARS = '-[:alnum:]'
@@ -33,13 +34,13 @@ module ConsoleRb
 
     attr_reader :current_url, :path
 
-    def initialize(settings:, on_zoom:, on_bell:, on_child_exit:, on_path_change:, on_notify:)
+    def initialize(settings:, despatcher:, on_zoom:, on_bell:, on_child_exit:, on_path_change:)
       @settings = settings
+      @despatcher = despatcher
       @on_zoom = on_zoom
       @on_bell = on_bell
       @on_child_exit = on_child_exit
       @on_path_change = on_path_change
-      @on_notify = on_notify
       @match_tags = []
     end
 
@@ -236,24 +237,27 @@ module ConsoleRb
       terminal.clipboard.read_text_async(nil) do |clipboard, result|
         accept_paste(clipboard.read_text_finish(result))
       rescue StandardError => e
-        @on_notify.call(
-          p_('toast-message', "Couldn't Paste Text"),
-          p_('spad-message',
-             'An unexpected error occurred whilst reading the clipboard. Please ' \
-             'include the following information if you report the error.'),
+        throw_spad(
+          title: p_('toast-message', "Couldn't Paste Text"),
+          body: p_('spad-message',
+                   'An unexpected error occurred whilst reading the clipboard. Please ' \
+                   'include the following information if you report the error.'),
           content: e.message,
+          error: e,
           flags: %i[show_report show_sys_info]
         )
       end
     end
 
     # Pasting a multi-line command that mentions sudo is the classic
-    # clipboard-hijack shape, so it gets a confirmation first.
+    # clipboard-hijack shape, so it gets a confirmation first. Upstream tests
+    # the leading-whitespace-stripped text for both markers and then pastes the
+    # original, untouched, if the user agrees.
     def accept_paste(text)
       text.to_s.then do |content|
         if content.strip.empty?
           nil
-        elsif content.include?('sudo') && content.include?("\n")
+        elsif suspicious_paste?(content)
           confirm_paste(content)
         else
           terminal.paste_text(content)
@@ -261,35 +265,75 @@ module ConsoleRb
       end
     end
 
+    def suspicious_paste?(content)
+      content.lstrip.then { |stripped| stripped.include?('sudo') && stripped.include?("\n") }
+    end
+
     def confirm_paste(text)
-      Adwaita::AlertDialog.new(
-        _('You are pasting a command that runs as an administrator'),
-        format(_("Make sure you know what the command does:\n%s"), text.strip)
-      ).tap do |dialog|
-        dialog.add_response('cancel', _('_Cancel'))
-        dialog.add_response('paste', _('_Paste'))
-        dialog.set_response_appearance('paste', :destructive)
-        dialog.close_response = 'cancel'
-        dialog.signal_connect('response') do |_dialog, response|
-          terminal.paste_text(text) if response == 'paste'
-        end
-        dialog.present(terminal)
+      PasteDialog.new(content: text).run(terminal) do |result|
+        result == :paste ? terminal.paste_text(text) : nil
       end
     end
 
-    def open_link
-      @current_url.then { |url| launch(url) if url }
+    def open_link = @current_url&.then { |url| launch(url) }
+
+    # The despatcher opens the uri with whatever handles its scheme, mounting
+    # the enclosing volume first if it has to.
+    def launch(uri)
+      @despatcher.open(uri, terminal.root) do |error|
+        error&.then { |failure| report_launch_failure(uri, failure, nil) }
+      end
     end
 
-    def show_in_files
-      @path.then { |file| launch(file.uri, p_('toast-message', "Couldn't Show File")) if file }
+    # Upstream asks the file manager to select the current file when the shell
+    # reported one, and to open the directory otherwise — selecting a file is
+    # not the same as opening it, which is why this goes over the bus rather
+    # than through a launcher.
+    def show_in_files = @path&.then { |file| show_in_files_for(file) }
+
+    def show_in_files_for(file)
+      if current_file?
+        @despatcher.show_item(file.uri, terminal.root) do |error|
+          report_show_failure(error, operation: 'show_item', uri: file.uri,
+                                     title: p_('toast-message', "Couldn't Show File"),
+                                     body: show_file_body)
+        end
+      else
+        @despatcher.show_folder(file.uri, terminal.root) do |error|
+          report_show_failure(error, operation: 'show_folder', uri: file.uri,
+                                     title: p_('toast-message', "Couldn't Open Folder"),
+                                     body: show_folder_body)
+        end
+      end
     end
 
-    def launch(uri, failure_title = nil)
-      Gtk::UriLauncher.new(uri).launch(terminal.root, nil) do |launcher, result|
-        launcher.launch_finish(result)
-      rescue StandardError => e
-        report_launch_failure(uri, e, failure_title)
+    # The shell reports the file it is editing separately from the directory it
+    # is in; only the former is worth selecting.
+    def current_file?
+      !terminal.ref_termprop_uri(Vte::TERMPROP_CURRENT_FILE_URI).nil?
+    rescue StandardError
+      false
+    end
+
+    def show_file_body
+      p_('spad-message',
+         'An unexpected error occurred whilst showing the file. Please include ' \
+         'the following information if you report the error.')
+    end
+
+    def show_folder_body
+      p_('spad-message',
+         'An unexpected error occurred whilst opening the folder. Please include ' \
+         'the following information if you report the error.')
+    end
+
+    def report_show_failure(error, operation:, uri:, title:, body:)
+      error&.then do
+        throw_spad(title: title,
+                   body: body,
+                   content: "#{operation}: #{uri}",
+                   error: error,
+                   flags: %i[show_report show_sys_info])
       end
     end
 
@@ -298,10 +342,13 @@ module ConsoleRb
     def report_launch_failure(uri, error, failure_title)
       (failure_title || p_('toast-message', "Couldn't Open Link")).then do |title|
         if error.message.to_s.match?(/not supported|No application/i)
-          @on_notify.call(title, unsupported_body(uri))
+          throw_spad(title: title, body: unsupported_body(uri))
         else
-          @on_notify.call(title, unexpected_body(uri), content: "URI: #{uri}\n#{error.message}",
-                                                       flags: %i[show_report show_sys_info])
+          throw_spad(title: title,
+                     body: unexpected_body(uri),
+                     content: "URI: #{uri}\n#{error.message}",
+                     error: error,
+                     flags: %i[show_report show_sys_info])
         end
       end
     end

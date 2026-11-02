@@ -75,14 +75,16 @@ module ConsoleRb
       @on_status_change.call
     end
 
-    # A remote or privileged session gets a badge on its tab so it is
+    # A remote, sandboxed or privileged session gets a badge on its tab so it is
     # recognisable in the overview even when the header bar colour is not shown.
+    # The icons and the order they are tested in are upstream's.
+    STATUS_ICONS = { remote: 'status-remote-symbolic',
+                     playbox: 'status-playbox-symbolic',
+                     privileged: 'status-privileged-symbolic' }.freeze
+
     def indicator_for(tab)
-      icon_name =
-        if tab.status.include?(:privileged) then 'channel-secure-symbolic'
-        elsif tab.status.include?(:remote) then 'network-server-symbolic'
-        end
-      icon_name && Gio::ThemedIcon.new(icon_name)
+      STATUS_ICONS.find { |flag, _icon| tab.status.include?(flag) }
+                  &.then { |_flag, icon| Gio::ThemedIcon.new(icon) }
     end
 
     # A shell that exited on its own takes its tab with it, matching upstream.
