@@ -10,3 +10,7 @@ source "https://rubygems.org"
 
 gem "adwaita"
 gem "gtk4"
+
+# GTop: upstream reads per-process statistics through libgtop, and
+# lib/console_rb/process_info.rb read /proc by hand because no binding existed.
+gem "libgtop"

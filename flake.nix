@@ -26,6 +26,9 @@
           libadwaita
           vte-gtk4
           harfbuzz
+          # Carrying the typelibs for this app's binding gems. gtkStack feeds
+          # both buildInputs and typelibPath, so one list does both jobs.
+          libgtop
         ]
         # The Ruby `pkg-config` gem resolves `Requires.private` transitively and
         # hard-fails if any .pc in the chain is missing, so gtk4's whole
@@ -98,7 +101,14 @@
         gems = pkgs.bundlerEnv {
           name = "console-rb-gems";
           inherit ruby gemConfig;
-          gemdir = ./.;
+          # ./nix, not ./. -- the repo root Gemfile is kettle-jem's development
+          # bundle (rubocop, standard, a github-sourced rubocop-packaging), so
+          # resolving it as the app's runtime closure both bloats the closure
+          # and makes the lock impossible to regenerate: bundler tries to clone
+          # into the read-only nix store, and the escape branch wants a
+          # locally-installed nomono. nix/Gemfile is the runtime set, which is
+          # what the other 76 forks already use.
+          gemdir = ./nix;
         };
 
       in
