@@ -22,11 +22,11 @@ module ConsoleRb
 
         tab_overview.tap do |overview|
           overview.view = pages.tab_view
-          overview.child = fullscreen_box
+          overview.child = fullscreen_box_widget
           overview.signal_connect('create-tab') { create_tab }
         end
 
-        fullscreen_box.tap do |box|
+        fullscreen_box_widget.tap do |box|
           box.content = content_stack
           box.add_top_bar(header_bar)
           box.add_top_bar(tab_bar)
@@ -226,7 +226,9 @@ module ConsoleRb
       end
     end
 
-    def fullscreen_box = @fullscreen_box ||= FullscreenBox.new.build
+    def fullscreen_box = @fullscreen_box ||= FullscreenBox.new
+
+    def fullscreen_box_widget = @fullscreen_box_widget ||= fullscreen_box.build
 
     def content_stack = @content_stack ||= Gtk::Stack.new
 
@@ -267,7 +269,12 @@ module ConsoleRb
     end
 
     def menu_popover
-      @menu_popover ||= Gtk::PopoverMenu.new(primary_menu)
+      @menu_popover ||= Gtk::PopoverMenu.new(primary_menu).tap do |popover|
+        # Upstream binds autohide to this popover's visibility, inverted: the
+        # top bars must not slide away in fullscreen while the main menu is
+        # open above them (kgx-window.ui:82-83).
+        popover.signal_connect('notify::visible') { fullscreen_box.autohide = !popover.visible? }
+      end
     end
 
     def tab_button

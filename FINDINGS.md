@@ -417,6 +417,50 @@ because it needs `:handles_command_line`, not because of any defect.
 
 ---
 
+## 17. `libgtop`'s functions are bound but not callable
+
+**blocker** · `libgtop` 1.0.0
+
+The gem loads cleanly (`require "libgtop"` populates `GTop` with 372
+constants), but every function raises before doing anything useful.
+
+libgtop's GI annotations name its functions and structs in a flat, lowercase
+style (`glibtop_get_proc_state`, `glibtop_proc_state`, …) that collides with
+Ruby constant-naming rules and with the gem's own method-arity expectations.
+Loading prints a page of warnings —
+
+```
+gobject-introspection/loader.rb:133: warning: rb_define_const: invalid name
+`glibtop_proc_state' for constant
+```
+
+— and calling any function fails immediately, because ruby-gnome resolves
+each argument's type from the raw GI name and the binding's generated arity
+does not match libgtop's documented C signature:
+
+```ruby
+GTop.glibtop_get_proc_state(1)
+# ArgumentError: GTop.glibtop_get_proc_state: wrong number of arguments (1 for 2)
+GTop.glibtop_get_proc_args(1, 0)
+# ArgumentError: GTop.glibtop_get_proc_args: wrong number of arguments (2 for 3)
+```
+
+Passing the "missing" argument does not help — there is no documented second
+argument to `glibtop_get_proc_state` upstream; the GI-generated binding simply
+expects an out-parameter struct the caller has no supported way to construct
+(`GTop::Glibtop` — the obvious guess — does not even exist: `uninitialized
+constant GTop::Glibtop`).
+
+**Not worked around.** `lib/console_rb/process_info.rb` reads `/proc` directly
+instead, which is what upstream's own fallback path does when libgtop is
+unavailable at build time. This is the one gem in this port's dependency list
+that could not be put to use; `console-rb.gemspec` and `nix/Gemfile` still
+declare it, both so the typelib wiring stays documented and because it is a
+real, correct runtime dependency — it is only the *Ruby* entry points that do
+not work.
+
+---
+
 ## Reporting
 
 None of these have been filed upstream yet. The ones worth reporting to

@@ -10,7 +10,14 @@ source "https://rubygems.org"
 
 gem "adwaita"
 gem "gtk4"
+gem "vte4"
 
-# GTop: upstream reads per-process statistics through libgtop, and
-# lib/console_rb/process_info.rb read /proc by hand because no binding existed.
+# GTop: upstream reads per-process statistics through libgtop. The gem loads
+# but its functions are not callable from Ruby (FINDINGS.md #17), so
+# lib/console_rb/process_info.rb reads /proc directly instead; the dependency
+# stays declared because it is still a real runtime dependency and keeps the
+# typelib wiring in flake.nix documented.
 gem "libgtop"
+
+# Translation lookup shares GNOME Console's own gettext catalogue.
+gem "gettext"

@@ -261,6 +261,27 @@ module ConsoleRb
       @search_entry ||= Gtk::SearchEntry.new.tap do |entry|
         entry.placeholder_text = _('Find text')
         entry.hexpand = true
+        entry.add_controller(search_entry_shortcuts)
+      end
+    end
+
+    # `kgx-tab.ui:47-63`: GtkSearchEntry does not bind Return/Shift+Return to
+    # its own next-match/previous-match signals, so a capture-phase
+    # GtkShortcutController does it explicitly, same as upstream.
+    SEARCH_ENTRY_SHORTCUTS = {
+      'Return' => 'next-match',
+      '<Shift>Return' => 'previous-match'
+    }.freeze
+
+    def search_entry_shortcuts
+      @search_entry_shortcuts ||= Gtk::ShortcutController.new.tap do |controller|
+        controller.propagation_phase = :capture
+
+        SEARCH_ENTRY_SHORTCUTS.each do |accelerator, signal|
+          Shortcuts.trigger(accelerator)&.then do |trigger|
+            controller.add_shortcut(Gtk::Shortcut.new(trigger, Gtk::SignalAction.new(signal)))
+          end
+        end
       end
     end
 

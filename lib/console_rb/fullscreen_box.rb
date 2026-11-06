@@ -17,6 +17,7 @@ module ConsoleRb
         view.add_controller(motion)
 
         motion.signal_connect('motion') { |_controller, _x, y| pointer_moved(y) }
+        motion.signal_connect('enter') { |_controller, _x, y| pointer_moved(y) }
         motion.signal_connect('leave') { schedule_hide }
       end
     end
@@ -58,7 +59,17 @@ module ConsoleRb
         end
     end
 
-    def toolbar_view = @toolbar_view ||= Adwaita::ToolbarView.new
+    # `top-bar-style: raised` (kgx-fullscreen-box.ui:12) puts the `.raised`
+    # class on the top-bar area, which is what every status-colour header-bar
+    # rule in data/style.css is keyed on; left at the default `flat` those
+    # rules never match. `main-box` (kgx-fullscreen-box.ui:15-17) is a bare
+    # styling hook upstream ships alongside it.
+    def toolbar_view
+      @toolbar_view ||= Adwaita::ToolbarView.new.tap do |view|
+        view.top_bar_style = :raised
+        view.add_css_class('main-box')
+      end
+    end
 
     def motion = @motion ||= Gtk::EventControllerMotion.new
   end
