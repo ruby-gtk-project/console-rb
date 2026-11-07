@@ -1,9 +1,21 @@
-# Translation parity — console-rb (2026-11-07 audit)
+# Translation parity — console-rb (2026-11-07 audit, re-verified at HEAD `6bb6956`)
 
 | | |
 |---|---|
 | Upstream | `po/` on `origin/main`: 61 `.po` files + `LINGUAS` + `POTFILES.in` (confirmed by direct `git ls-tree`) |
 | Port | `po/`: 61 `.po` files + `LINGUAS`, no `POTFILES.in` |
+
+No commit between `a5a2eab` and `6bb6956` touches `po/`, `lib/console_rb/i18n.rb`,
+`data/*.desktop*` or `data/*.metainfo*`, so every finding below (written
+against `a5a2eab`) is re-confirmed unchanged at current HEAD. One additional
+finding from this pass: **there is no `TRANSLATION_PARITY.md` at the
+repository root at all** — `ls TRANSLATION_PARITY.md` returns nothing, only
+this `.reports/` document exists. The skill names `TRANSLATION_PARITY.md` at
+the port's root as the contract, the same way `COMPONENT_PARITY.md` and
+`TEST_PARITY.md` exist at root; its absence here means there is no
+root-level, append-only, per-message ledger for translation the way the other
+two axes have one — only this narrative audit. That is itself a process gap,
+independent of how clean the underlying catalogue turns out to be.
 
 ## Catalogue-level msgid survival: clean, verified by direct diff
 

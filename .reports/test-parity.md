@@ -1,115 +1,105 @@
-# Test parity — console-rb (2026-11-07 audit)
+# Test parity — console-rb (2026-11-07 audit, re-verified at HEAD `6bb6956`)
 
 | | |
 |---|---|
-| Upstream tests | `tests/` — 21 `.c` files, confirmed by `git ls-tree -r --name-only origin/main` |
-| Existing ledger | `TEST_PARITY.md` @ `57073a5` ("148 upstream / 25 ported / 123 gaps"), and a second, older, inconsistent copy at `.reports/TEST_PARITY.md` @ `07ed601` |
-| This audit | Ran the suite for real; it executes and passes, but the ledger's numbers predate real porting work and are no longer the current count |
+| Upstream tests | `tests/` — 21 `.c` files; `TEST_PARITY.md` counts **148** test cases across them (12 are repeaters expanding to ~90 further runtime cases) |
+| Canonical ledger | `TEST_PARITY.md` @ root, last substantively edited `2b33b04`: **148 upstream / 26 ported / 122 gaps** |
+| Second ledger | `.reports/TEST_PARITY.md` (older, generated): **0/148**, never reconciled with the root ledger |
+| Runtime gate | Re-ran it live this round (below): real, reproducible, green |
 
-## First: does the suite actually run? Yes — verified by executing it
+This supersedes the same-day draft of this file (written against `a5a2eab`).
+Three of its four findings are now fixed in the live ledger/docs (see
+`.reports/accountability-ensurance.md` Findings 3 and 4); this version
+re-verifies the gate itself and restates what is still open.
+
+## The runtime gate, re-run live this round
 
 ```
 nix develop --command bash -c 'rake schema && xvfb-run -a rake test'
 ```
 
-`rake test` runs, in order: `integration_test.rb` (29/29), `actions_test.rb`
-(71/71), `services_test.rb` (50/50), `drive_console_rb.rb` (57/57). All four
-exit zero. `test/gtk_driver.rb:222-223` confirms the gate is real, not cosmetic
-— `exit(total.zero? ? 0 : 1)`, so a failed check fails the process.
-
-**One prerequisite the gate's own documented invocation omits.** Running the
-literal command this campaign's gate uses —
-`nix develop --command xvfb-run -a ruby test/drive_console_rb.rb` — with no
-prior `rake schema` **aborts immediately**:
+Result, this run, right now:
 
 ```
-(drive_console_rb.rb:…): GLib-GIO-ERROR **: Settings schema
-'org.gnome.Console.Rb' is not installed
+integration_test.rb   29/29 checks passed
+actions_test.rb        71/71 checks passed
+services_test.rb       55/55 checks passed
+drive_console_rb.rb    57 of 57 checks passed — DRIVE OK
 ```
 
-The schema has to be compiled first (`rake schema` → `glib-compile-schemas
-data/schemas`). `rake test` does this implicitly by sharing a working
-directory where a prior compile already happened to leave a compiled schema
-blob around; a genuinely clean checkout does not. This does not invalidate the
-57-of-57 result — once compiled, it reliably passes — but it means **"drive_ok"
-as stated in this round's gate is not reproducible from the one-line command
-the gate names**, and nothing in `README.md`, `PORTING.md` or the drive
-script's own header comment says to run `rake schema` first. Treat this as a
-packaging gap, not a behavioural one, but a real one: an agent or CI runner
-that copies the documented command verbatim gets a crash, not "DRIVE OK".
+212/212 total. All four suites exit zero; `test/gtk_driver.rb` makes the exit
+code real (`exit(total.zero? ? 0 : 1)`). The task's cited gate — "57 checks
+passed, 0 failed, 20 components" — is exactly the `drive_console_rb.rb` line
+above, confirmed reproducible on a clean re-run, **and the schema
+prerequisite the prior draft found undocumented is now stated** in
+`README.md` and the drive script's own header (`test/drive_console_rb.rb:18`).
+Several `GLib-GObject-CRITICAL: g_object_ref: assertion 'G_IS_OBJECT (object)'
+failed` warnings print during the `actions_test.rb`/`drive_console_rb.rb`
+runs and do not fail any check — worth independent follow-up (a ref-counting
+bug the suite isn't currently asserting against), but not itself a test-parity
+finding since nothing claims it is checked.
 
-**One screenshot step is silently non-fatal.** In an early run, step 22 logged
-`shot 07-preferences failed: RuntimeError: widget produced no render node (not
-realised yet?)` and the run still printed `57 of 57 checks passed` / `DRIVE
-OK` — screenshot capture is not one of the counted checks. A second run
-captured the shot cleanly. The flake is real (render-timing dependent) and the
-gate's check count does not reflect it either way; "57 of 57" is accurate
-about assertions and silent about rendering.
+## What the runtime gate does and does not prove
 
-## Second: the 148/25/123 ledger is stale, in the direction that currently overstates gaps
+212 checks passing is a real, reproducible, honestly-counted number — but it
+is **not** a measurement of test parity. Test parity per the skill is a
+bijection against upstream's 148 named test cases, by name, and the gate's 212
+checks are not that: `drive_console_rb.rb` and `integration_test.rb` are new
+integration scripts written for the port with no upstream counterpart, and
+even the ones that do map to upstream tests (`actions_test.rb`,
+`services_test.rb`) are only partially censused against the 148 upstream
+cases — which is exactly what the next section is about. **A component or
+behaviour the 212 checks drive through is "exercised", not "proven to match
+upstream's pinned property" — those are different claims**, and the task's
+framing ("a component no check exercises is unverified, not done") describes
+a necessary condition, not a sufficient one. 20 components being driven by
+the gate does not mean those same 20 components have test parity; several of
+them (shortcuts dialog, font picker a11y, search-bar Return key, Ctrl+click
+link-open) are simultaneously driven by the gate *and* listed as open gaps in
+`COMPONENT_PARITY.md` (see `.reports/component-parity.md`) — the gate
+confirms they do not crash, not that they behave like upstream.
 
-`TEST_PARITY.md` was written before commit `464a7a0` ("Port the spad source,
-watcher, livery manager, depot, despatcher, paste dialog and simple tab")
-added `test/services_test.rb`, which did not exist in the ledgered state.
-Counting upstream's own `g_test_add_func` calls directly (not the ledger's
-prose):
+## The test-parity ledger's own numbers: 26/148, and self-admittedly incomplete
 
-| Upstream file | Upstream test functions | Now has a named counterpart in `services_test.rb`? |
-|---|---:|---|
-| `tests/test-depot.c` | 3 | Yes — 7 checks: fallback dir/shell, explicit command wins, TERM forced, TERM_PROGRAM, explicit env + TERM |
-| `tests/test-despatcher.c` | 1 | Yes — 5 checks: FileManager1 tuple shape, percent-encoding (quote, backslash), session-bus reachability, `show_folder` result |
-| `tests/test-spad-source.c` | 4 | Yes — 5 checks: unhandled/handled report, handler gets title, bundle is the Spad keyword set, body-required |
-| `tests/test-livery.c` | 5 | Partially — livery-manager resolution/shadowing is covered (6 checks); roundtrip/palette-set on a bare `Livery` object is not independently re-verified here |
-| (train/watcher split) | — | watcher polling/background-switch/tick/drop behaviour is covered (6 checks), new since the watcher was extracted from `train.rb` |
+`TEST_PARITY.md`'s current body states plainly that the depot/despatcher/
+spad-source/livery recount against upstream's `test-depot.c` (3),
+`test-despatcher.c` (1), `test-spad-source.c` (4) and `test-livery.c` (5)
+functions "is still owed" — i.e. the 26-ported figure has not been fully
+re-derived from a complete per-function comparison since `464a7a0` added
+`services_test.rb`. Per the `test-parity` skill there is no state between
+`ported` and `gap`; treat every one of the 122 gap rows as exactly that,
+full stop, regardless of how much of `services_test.rb`'s real new coverage
+has not yet been credited against them. The honest state is **at most
+26/148, at best somewhat higher once the owed recount happens, and nobody has
+done that recount** — reported here as still open, not guessed at.
 
-This closes real ground the existing ledger still lists as 4-of-44 in its
-"Closures, template machinery, spawn wrappers" bucket. **The 25/148 figure in
-`TEST_PARITY.md` is a lower bound from before this work landed, not the
-current count.** I have not re-derived a new precise total — doing that
-properly means repeating the ledger's full per-function comparison across all
-21 files, which this round did not have room for — but reporting the old
-figure as current, as `COMPONENT_PARITY.md`-adjacent documents already do,
-would itself be a false claim. **The honest state is: the ledger is out of
-date and nobody has recomputed it since `464a7a0`.** That is reported here as
-a gap in its own right, not quietly corrected with a guessed number.
+## Two ledgers disagree and neither says so
 
-## Third: a confirmed fix with zero regression coverage
+`TEST_PARITY.md` (root) says 26/148. `.reports/TEST_PARITY.md` (committed
+earlier, from a full per-function pass) says 0/148. Both are checked into the
+same branch, both state a specific number as if current, and neither
+cross-references the other. A reader who opens either walks away with a
+different number for the same underlying comparison. This is recorded as a
+standing gap in `.reports/accountability-ensurance.md` Finding 6.
 
-`lib/console_rb/pages.rb:81-87` now tests `remote` before `privileged` —
-`COMPONENT_PARITY.md`'s cross-cutting bug (root-over-SSH badges as privileged,
-not remote) has been fixed in code since the ledger was written (see
-`.reports/component-parity.md`). But grepping the whole `test/` tree for
-`indicator_for` or `STATUS_ICONS` (the pages.rb constant) turns up **zero
-references outside `pages.rb` itself**. `services_test.rb:230-240` checks only
-that the eight icon *files* exist on disk, not that `indicator_for` picks the
-right one for a given combination of flags. Upstream's `test-icon-closures.c`
-(`status_as_icon`) exists precisely to pin this, and it is one of the 123 gaps
-the ledger already names, correctly, as unported. **The fix shipped; the
-regression test that upstream has, and that would catch the fix being
-reverted, still does not exist.** This is exactly the scenario test-parity
-exists to prevent: a real behaviour with no pin.
+## Still open: the empty spec lane
 
-## Fourth: an entire planned test lane has zero files in it
-
-`spec/README.md` describes an RSpec harness (`kettle-test`) with helpers for
-env stubbing, time travel, etc. `spec/spec_helper.rb` exists and loads it.
-`find spec -type f` returns exactly those two files — **no `*_spec.rb` file
-exists anywhere in the repository.** The drive script's own header comment
-says as much: "The specs under `spec/` (currently empty — see
-`spec/README.md`) would cover the display-free half." A test lane that is
-documented, scaffolded, and has never had a single spec written against it is
-not a deferred nicety; per upstream's own test split (pure-logic tests —
-`test-settings.c`, `test-utils.c`, `test-palette.c`, `test-proxy-info.c`,
-`test-colour-utils.c`, `test-system-info.c`, `test-locale.c`, 60 tests) this is
-the exact category of coverage the spec lane was meant to hold, and it holds
-none of it that is not already duplicated into the ad hoc `test/*.rb` scripts.
+`spec/` still has only `README.md` and `spec_helper.rb`; no `*_spec.rb` exists
+anywhere in the tree, confirmed again at HEAD `6bb6956`. Per upstream's own
+test split, the pure-logic suites this lane was scaffolded for
+(`test-settings.c`, `test-utils.c`, `test-palette.c`, `test-proxy-info.c`,
+`test-colour-utils.c`, `test-system-info.c`, `test-locale.c`, ~60 tests) are
+exactly the category this lane would hold, and it holds none that is not
+already duplicated into the ad hoc `test/*.rb` scripts.
 
 ## Conclusion
 
-Not clean. The suite that exists runs and genuinely passes, with exit codes
-that mean something — that much is real. But: the gate's documented one-line
-invocation is not reproducible on a clean checkout without an unstated
-`rake schema` step; the only parity ledger for tests is stale in a way that
-currently *overstates* the gap count without saying so; a confirmed bug fix
-shipped with no regression test; and an entire planned test lane (RSpec specs)
-has zero files in it after being scaffolded.
+Not clean. The runtime gate genuinely passes and is reproducible — that much
+is solid and should be stated plainly rather than buried under the gaps below
+it. But the gate's 212/57 numbers answer "does the port's own integration
+script pass", not "does the port have test parity with upstream's 148
+pinned cases" — those are different questions, and conflating them is exactly
+the false-green risk the task asked this audit to watch for. The actual
+test-parity number is at most 26/148 (122 gaps), self-admittedly incomplete
+even at that, contradicted by a second committed ledger claiming 0/148, and
+an entire scaffolded test lane (RSpec specs) remains empty.
