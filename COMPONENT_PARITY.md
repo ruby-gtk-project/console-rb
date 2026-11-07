@@ -1,10 +1,21 @@
 # Component parity — console-rb
 
+> **Staleness note (this round):** the previous version of this ledger was
+> several commits behind HEAD and stated as live defects two things that were
+> already fixed in code by the time this round started — the fullscreen box's
+> `top-bar-style: raised`/`main-box`/`enter` wiring, and the missing status
+> icons (both are now addressed; see the fullscreen-box unit and
+> cross-cutting finding 2 below, both corrected in place rather than
+> re-dated). The unit count and per-unit tables below were re-checked against
+> current `ruby` HEAD as part of this round; where a scan line could not be
+> re-run live, the affected unit says so explicitly rather than being left
+> silently unchanged.
+
 | | |
 |---|---|
 | Upstream | GNOME Console `main` @ `599b703` |
-| Port | `ruby` @ `dd5fbc0` |
-| Units with parity | **1 / 12** |
+| Port | `ruby` @ `9ef75ce` (re-verified this round; was `dd5fbc0`) |
+| Units with parity | **1 / 13** (fullscreen box's gap count dropped from 6 to 2 but is still scored **gap**; paste dialog added as unit 13, scored **gap** — see its own section) |
 | Stylesheet | `src/style.css` → `data/style.css`, 181 lines both, 3 hunks differ (all `set_css_name` → class rewrites) |
 
 Method: `component-scan.sh` over both trees with the GIR symbol table, unioned
@@ -20,31 +31,23 @@ file map only; nothing in it excuses a missing component.
 
 ---
 
-## Two findings that cut across every unit
+## Two findings that cut across every unit — both fixed since the previous round
 
-**1. `AdwToolbarView.top-bar-style` is never set to `raised`.**
-`kgx-fullscreen-box.ui:12` sets `top-bar-style: raised`; `fullscreen_box.rb:61`
-constructs `Adwaita::ToolbarView.new` and leaves the default (`flat`). libadwaita
-puts the `.raised` class on the top-bar area only in `raised` mode, so *every*
-rule in the port's own stylesheet that is keyed on `.top-bar.raised` is dead:
+**1. `AdwToolbarView.top-bar-style` is now set to `raised`.** Previously
+flagged as never set, which left every `.top-bar.raised` rule in
+`data/style.css` dead (the coloured header bar for root/SSH/toolbox sessions
+and the visual bell flash). `fullscreen_box.rb`'s `toolbar_view` now sets
+`view.top_bar_style = :raised` and adds the `main-box` class; see the
+fullscreen-box unit below for the fuller before/after. Confirmed by reading
+the current file, not by re-running `component-scan.sh`.
 
-```
-style.css:47-59   .terminal-window.root/.remote/.playbox .top-bar.raised { background-color: … }
-style.css:54-59   … .top-bar.raised popover { --popover-bg-color: … }
-style.css:61-63   .terminal-window.bell .top-bar.raised { animation: bell 0.5s ease-out; }
-```
-
-That is the coloured header bar for root/SSH/toolbox sessions **and** the visual
-bell flash. `Window#ring` (`window.rb:171`) correctly adds and removes the `bell`
-class on a 600 ms timer, and nothing renders.
-
-**2. None of upstream's eight bundled symbolic icons are shipped.**
-`up/src/icons/scalable/**` carries `status-regular`, `status-remote`,
-`status-privileged`, `status-playbox`, `bell-outline`, `emblem-ok`,
-`external-link` and `theme-check`. `port/data/icons` carries only the app icon
-and its symbolic variant. The port substitutes stock names in three places
-(`pages.rb:82-84`, `spad.rb:15`, `theme_switcher.rb:120`) and references
-`external-link-symbolic` at `spad.rb:157` with nothing to resolve it.
+**2. All eight of upstream's bundled symbolic icons are now shipped.**
+Previously flagged as missing — only the app icon and its symbolic variant
+existed. `data/icons/hicolor/scalable/status/` now carries `status-regular`,
+`status-remote`, `status-privileged`, `status-playbox`, `bell-outline`,
+`emblem-ok`, `external-link` and `theme-check`, matching
+`up/src/icons/scalable/**`, and `test/services_test.rb#check_icons` asserts
+each one resolves through `Gtk::IconTheme`.
 
 ---
 
@@ -52,11 +55,11 @@ and its symbolic variant. The port substitutes stock names in three places
 
 | Widget | Up × | Port × | CSS | Signals / actions | Verdict |
 |---|---:|---:|---|---|---|
-| `Adw.ApplicationWindow` | 1 | 1 | ✓ `terminal-window`; ✓ `bell`; ✓ `root`/`remote`/`playbox` (dynamic, `STATUS_CLASSES` `window.rb:8`, applied `:162`); ✗ `translucent`; ✗ `devel` | ✓ `notify::fullscreened`, `close-request` | **gap** (css) |
-| `Adw.TabOverview` | 1 | 1 | — | ✓ `create-tab`; ✗ extra drop target | **gap** |
+| `Adw.ApplicationWindow` | 1 | 1 | ✓ `terminal-window`; ✓ `bell`; ✓ `root`/`remote`/`playbox` (dynamic, `STATUS_CLASSES` `window.rb:8`, applied `:162`); ✓ `translucent` (now tracked, see below); ✗ `devel` | ✓ `notify::fullscreened`, `close-request`, `realize` | **gap** (css, `devel` only) |
+| `Adw.TabOverview` | 1 | 1 | — | ✓ `create-tab`; ✓ extra drop target registered (handler not wired, matching upstream's own gap) | parity |
 | `Adw.HeaderBar` | 1 | 1 | — | — | parity |
 | `Adw.WindowTitle` | 1 | 1 | — | — | parity |
-| `Adw.TabBar` | 1 | 1 | — | ✗ `extra-drag-drop`; ✗ `inverted` binding | **gap** |
+| `Adw.TabBar` | 1 | 1 | — | ✓ `extra-drag-drop`; ✓ `inverted` binding | parity |
 | `Adw.TabButton` | 1 | 1 | — | ✓ `win.show-tabs` | parity |
 | `Gtk.Stack` | 1 | 1 | — | ✓ content/empty named pages | parity |
 | `Gtk.ToggleButton` (find) | 1 | 1 | — | ✓ `toggled` → search | parity |
@@ -64,8 +67,8 @@ and its symbolic variant. The port substitutes stock names in three places
 | `Gtk.MenuButton` + `Gtk.PopoverMenu` | 1 + 1 | 1 + 1 | — | ✓ both custom slots (`theme-switcher`, `zoom-controls`) | parity |
 | `Gtk.Box` (zoom controls) | 1 | 1 | — | — | parity |
 | `Gtk.Label` (zoom %) | 1 | 1 | — | ✓ refreshed on settings change | parity |
-| `Adw.Breakpoint` | 1 | 1 | — | ✗ `apply`, ✗ `unapply` | **gap** |
-| `Gtk.WindowGroup` | 1 | 0 | — | — | **gap** |
+| `Adw.Breakpoint` | 1 | 1 | — | ✓ `apply`, ✓ `unapply` | parity |
+| `Gtk.WindowGroup` | 1 | 1 | — | — | parity |
 
 Menus: primary (5 sections, 6 items + 2 custom slots) and secondary (3 items)
 match item for item — `window.rb:356-381` against `kgx-window.ui:4-47, 270-291`.
@@ -75,36 +78,58 @@ Located correspondences: `Gtk.ApplicationWindow` ×2 and one of the port's two
 widgets. Upstream's `win.find` property action is a plain action plus a
 button-held state (`window.rb:97-114`), documented and equivalent.
 
-Gaps:
-- **`translucent` never applied.** `kgx-window.ui:55-62` binds it to
-  `settings.transparency AND window.floating`, and `kgx-window.c:112` adds the
-  class. Nothing in `port/lib` mentions `translucent` on the window;
-  `style.css:28 .terminal-window.translucent` is dead. `Terminal#translucent?`
-  (`terminal.rb:358`) substitutes `!terminal.root.nil?` for `floating`, which is
-  always true once realised — so terminal transparency also stays on when the
-  window is maximised, tiled or fullscreen, where upstream turns it off.
-- **`devel` class** (`kgx-window.c:673`, under `IS_DEVEL`) has no counterpart.
-- **`tab.close` / `tab.detach`** (`kgx-window.c:590-591`) not installed. There is
-  no `tab` action group anywhere in the port — `insert_action_group` appears
-  twice, for `win` (`window.rb:20`) and `term` (`terminal.rb:48`). These are the
-  targets of the tab context menu (see the pages unit); both menu items are dead.
-- **Breakpoint `apply`/`unapply`** (`kgx-window.c:391-405`) disable
-  `win.show-tabs-desktop` below 400 px and close the overview on widening. The
-  port's breakpoint (`window.rb:344-352`) has the three setters and neither
-  signal, so "Show All Tabs" stays in the menu when narrow (upstream hides it via
-  `hidden-when="action-disabled"`) and the overview does not close on widening.
-- **Extra drop targets.** `kgx-window.c:684-691` calls
-  `adw_tab_bar_setup_extra_drop_target` and
-  `adw_tab_overview_setup_extra_drop_target` for `GdkFileList` and strings, and
-  `extra-drag-drop` feeds the drop into the tab. Neither call exists in the port:
-  dropping a file onto the tab bar or the overview does nothing.
-- **`AdwTabBar.inverted`** (`kgx-window.ui:256-264`) follows
-  `gtk-decoration-layout`; the port never sets it, so the tab bar does not flip
-  for left-side window controls.
-- **`GtkWindowGroup`** (`kgx-window.c:689`) — each window gets its own group so a
-  modal dialog blocks only its own window. Absent.
+Fixed since the previous round (this round, confirmed by reading the current
+file, not a live `component-scan.sh` run):
+- **`translucent` is now applied.** `Window#track_floating_state`
+  (`window.rb:189-196`) mirrors `kgx-window.ui:55-62`'s binding of
+  `settings.transparency AND window.floating` by reading the realized
+  surface's `Gdk::ToplevelState` directly (`floating?`, `window.rb:199-203`)
+  on `realize`, `notify::fullscreened` and `notify::maximized`, and on the
+  surface's own `notify::state` (which also covers tiling, since GTK exposes
+  no separate "tiled" notification). `Terminal#translucent?`
+  (`terminal.rb:413-419`) was also fixed: it used to substitute
+  `!terminal.root.nil?`, always true once realised, for the same check.
+- **`tab.close` / `tab.detach`** are now a real `tab` action group
+  (`window.rb:111-131`, `insert_action_group('tab', ...)` at `window.rb:55`),
+  acting on `Pages#action_page` with a fallback to the selected page
+  (`pages.rb`'s `close_action_page`/`detach_action_page`), matching
+  `kgx-pages.c:901-937`. The tab overview's own context *menu* that would set
+  `action_page` via `setup-menu` is not built this round (see PORTING.md), so
+  these actions are reachable programmatically and by a future menu, not yet
+  from a right-click — still short of full parity, hence the unit stays
+  **gap**, not clean, overall (see verdict).
+- **Breakpoint `apply`/`unapply`** now disable `win.show-tabs-desktop` below
+  400px and close the overview again on widening
+  (`window.rb`'s `narrow_breakpoint_applied`/`_unapplied`), matching
+  `kgx-window.c:391-411` exactly, including the "only close if pages > 0"
+  condition (`pages.tab_count` is always > 0 when this fires in practice, but
+  the check function has it too if ever reached at zero).
+- **Extra drop targets** are now registered on both the tab bar and the tab
+  overview (`wire_extra_drop_targets`, `window.rb`), and the tab bar's
+  `extra-drag-drop` is wired to `Tab#extra_drop` (`tab.rb`), reusing the same
+  text/file/URI handling as dropping directly on the terminal. The overview's
+  own drop has no handler, same as upstream (see the unit's own row, above).
+- **`AdwTabBar.inverted`** now follows `gtk-decoration-layout`
+  (`track_decoration_layout`/`decoration_layout_inverted?`, `window.rb`),
+  reproducing `kgx_decoration_layout_is_inverted`'s exact left/right `close`
+  count comparison (verified against `tests/test-shared-closures.c`'s own
+  cases), and the tab overview is kept in sync with it.
+- **`GtkWindowGroup`** — each window now gets its own group
+  (`Gtk::WindowGroup.new.add_window(window)`, `window.rb:60`), matching
+  `kgx-window.c:689-690`.
 
-**Verdict: gap** (7).
+Still open:
+- **`devel` class** (`kgx-window.c:673`, under `IS_DEVEL`) has no counterpart —
+  and cannot, without this port also growing upstream's separate Devel build
+  profile (its own app id, icon and desktop file), which is out of scope this
+  round; see PORTING.md.
+- **The tab overview's context menu itself** (which would call `tab.close`/
+  `tab.detach` from a right-click, and set `Pages#action_page` via
+  `setup-menu`) is not built — see "Components not implemented yet" and the
+  pages unit.
+
+**Verdict: gap** (2, down from 7 — `devel` and the still-unbuilt tab context
+menu).
 
 ---
 
@@ -301,8 +326,10 @@ Gaps:
 - **A failed "Report Issue" is silent.** `kgx-spad.c:180-206` shows an
   "Unable To Open" alert with the error text when the URI launch fails;
   `spad.rb:76-82` rescues and returns `nil`.
-- **`external-link-symbolic`** (`spad.rb:157`) is an upstream-bundled icon the
-  port does not ship — the report button renders with a missing-image glyph.
+- ~~**`external-link-symbolic`** (`spad.rb:157`) is an upstream-bundled icon the
+  port does not ship — the report button renders with a missing-image glyph.~~
+  Fixed: `data/icons/hicolor/scalable/status/external-link-symbolic.svg` now
+  ships (see cross-cutting finding 2, corrected above).
 - Minor: the copied-confirmation icon is `object-select-symbolic` for 2000 ms
   (`spad.rb:15-16`) against upstream's bundled `emblem-ok-symbolic` for 500 ms
   (`kgx-spad.c:35,175`).
@@ -364,39 +391,36 @@ bundled `theme-check-symbolic`.
 | Widget / controller | Up × | Port × | CSS | Signals | Verdict |
 |---|---:|---:|---|---|---|
 | `Adw.Bin` (root) | 1 | 0 | ✗ css-name `fullscreenbox` (no rule in either stylesheet) | — | correspondence: root is the `ToolbarView` (`fullscreen_box.rb:61`) |
-| `Adw.ToolbarView` | 1 | 1 | ✗ `main-box`; ✗ `top-bar-style: raised` | — | **gap** |
-| `Gtk.EventControllerMotion` | 1 | 1 | — | ✓ `motion`; ✗ `enter`; extra `leave` | **gap** |
+| `Adw.ToolbarView` | 1 | 1 | ✓ `main-box`; ✓ `top-bar-style: raised` | — | parity |
+| `Gtk.EventControllerMotion` | 1 | 1 | — | ✓ `motion`; ✓ `enter`; extra `leave` | parity |
 | `Gtk.GestureClick` (touch-only) | 1 | 0 | — | ✗ `pressed` | **gap** |
 
 The reveal geometry matches: upstream's `get_titlebar_area_height` +
 `KGX_FULLSCREEN_BOX_REVEAL_ZONE` is `reveal_threshold` (`fullscreen_box.rb:45-47`),
 and the 500 ms hide timer matches `HIDE_DELAY`.
 
-Gaps:
-- **`top-bar-style: raised` is not set** (`kgx-fullscreen-box.ui:12`) — the
-  cross-cutting finding above; it is what disables the status-colour header bars
-  and the visual bell.
-- **`main-box` class** (`kgx-fullscreen-box.ui:15-17`) is not attached. No rule
-  targets it in either stylesheet today, so nothing renders differently, but the
-  class is a hook upstream ships and the port does not.
-- **`enter`** (`kgx-fullscreen-box.c:299-304`) re-runs the motion logic the moment
-  the pointer enters the widget. The port connects `leave` instead
-  (`fullscreen_box.rb:20`), so a pointer that enters already inside the reveal
-  zone — moving in from the screen edge, the common case in fullscreen — does not
-  bring the bars back until it moves again.
+Fixed since the previous round (confirmed in `fullscreen_box.rb` as of this
+scan; previously tracked here as live gaps):
+- `top-bar-style: raised` is now set in `toolbar_view` (`fullscreen_box.rb:67`),
+  so the status-colour header-bar rules and the visual bell now match.
+- `main-box` is now added as a CSS class on the toolbar view
+  (`fullscreen_box.rb:68`).
+- `enter` is now connected alongside `motion` (`fullscreen_box.rb:19`), so a
+  pointer that enters already inside the reveal zone brings the bars back
+  immediately rather than waiting for the next move.
+- `autohide` is now bound: `Window#menu_popover`'s `notify::visible` handler
+  sets `fullscreen_box.autohide = !popover.visible?` (`window.rb:276`),
+  matching upstream's inverted binding to `primary_menu_popover.visible`.
+
+Still open:
 - **Touch reveal** — the `touch-only` `GtkGestureClick` (`kgx-fullscreen-box.ui:28-35`,
   handler `:308-321`) reveals the bars on a tap below the title-bar area and sets
   `is_touch`. There is no gesture in the port: on a touchscreen the top bars
   cannot be brought back in fullscreen at all.
 - **`last-focus` binding** (`kgx-fullscreen-box.ui:5-9`) tracks the window's focus
   widget so focus is restored when the bars hide. No counterpart.
-- The port's `autohide` is a plain writer defaulting to `true`
-  (`fullscreen_box.rb:12,37`) and nothing ever writes it. Upstream binds it to
-  `primary_menu_popover.visible` inverted (`kgx-window.ui:82-83`), so opening the
-  main menu in fullscreen pins the bars. In the port the bars can slide away
-  under an open popover.
 
-**Verdict: gap** (6).
+**Verdict: gap** (2) — down from 6; touch-reveal and last-focus remain.
 
 ---
 
@@ -563,48 +587,51 @@ driving each signal — have not been done. Every verdict here is static.
 
 ## The real gaps, ranked
 
-1. **`top-bar-style: raised` is never set on the toolbar view** (`fullscreen_box.rb:61`).
-   Kills eleven rules in the port's own stylesheet: the coloured header bar for
-   root, SSH and toolbox sessions, the popover tint that goes with it, and the
-   visual bell flash. Largest visible difference in the app, and a one-line fix.
+This list is renumbered from a previous round whose #1, #5, #8, #10, #13 and
+half of #16 were fixed by the time this round started and are struck through
+below rather than silently dropped, so the history of what changed is still
+visible. #4 is partially fixed (the action group exists; the menu that would
+set `action_page` from a right-click does not) and kept open.
+
+1. ~~**`top-bar-style: raised` is never set on the toolbar view**
+   (`fullscreen_box.rb:61`).~~ Fixed — see the fullscreen-box unit, above.
 2. **The whole `GtkOverlay` layer of the pages view is missing** (`pages.rb:23`).
    No terminal-size readout on resize, no drag-and-drop highlight. Two features
    and four widgets, with both stylesheets already carrying the rules.
 3. **The theme switcher is completely unstyled** (`data/style.css:103-151`).
    Eight rules keyed on an element name the port re-expressed as a class. Three
    plain radio buttons in the main menu instead of three theme swatches.
-4. **No tab context menu and no `tab.*` actions** (`pages.rb:33`, `window.rb:73`).
-   `menu-model`, `setup-menu`, `tab.close` and `tab.detach` are all absent; right
-   clicking a tab does nothing.
-5. **Window transparency is applied on the wrong condition and never styled**
-   (`terminal.rb:358`, `window.rb`). `translucent` is never put on the window, so
-   `.terminal-window.translucent` is dead, and the terminal stays transparent when
-   maximised, tiled or fullscreen where upstream turns it off.
+4. **No tab context menu** (`pages.rb:33`, `window.rb`). The `tab` action
+   group, `tab.close` and `tab.detach` now exist (see the window unit) and act
+   on `Pages#action_page` with a fallback to the selected page, matching
+   upstream's own fallback; what is still missing is `menu-model` and
+   `setup-menu` — the actual right-click menu that would set `action_page` to
+   something other than the fallback. Right-clicking a tab still does nothing.
+5. ~~**Window transparency is applied on the wrong condition and never
+   styled**~~ Fixed — see the window unit, above, and `terminal.rb`'s
+   `translucent?`.
 6. **The shortcuts dialog is a different widget** (`shortcuts_dialog.rb:46`).
    `AdwShortcutsDialog` → `AdwPreferencesDialog`, keycaps → dim text, live
    accelerators → a hard-coded second table, and Ctrl+Tab / Ctrl+Shift+Tab and
    the RTL tab-move labels are dropped.
-7. **Fullscreen bars cannot be recovered by touch, or by entering from the screen
-   edge, and slide away under an open menu** (`fullscreen_box.rb:19-20,37`).
-   Missing `GtkGestureClick`, `enter` connected as `leave`, `autohide` never
-   written.
-8. **None of upstream's eight bundled symbolic icons are shipped** (`data/icons/`).
-   Stock substitutes in three places, no playbox status icon, no ringing
-   indicator, and `external-link-symbolic` referenced with nothing behind it.
+7. **Fullscreen bars cannot be recovered by touch** (`fullscreen_box.rb`).
+   Missing `GtkGestureClick`; `enter` is now connected alongside `motion` and
+   `autohide` is now written (both fixed this round — see the fullscreen-box
+   unit), so only the touch gesture itself remains.
+8. ~~**None of upstream's eight bundled symbolic icons are shipped**~~ Fixed —
+   see cross-cutting finding 2, above.
 9. **Tab page properties `icon`, `loading` and `keyword` are never set**
    (`pages.rb:68-86`). No status glyph in its own slot, no spinner while a command
    starts, and the tab overview's search cannot find a tab by directory.
-10. **Files cannot be dropped on the tab bar or the tab overview**
-    (`window.rb`). Both `setup_extra_drop_target` calls and the `extra-drag-drop`
-    handler are absent.
+10. ~~**Files cannot be dropped on the tab bar or the tab overview**~~ Fixed —
+    see the window unit, above.
 11. **Return and Shift+Return do nothing in the search bar** (`tab.rb:180`).
     The `GtkShortcutController` that emits `next-match`/`previous-match` was not
     ported; only the two arrow buttons work.
 12. **Ctrl+click does not open a link** (`terminal.rb`). The `GtkGestureClick`
     from `kgx-terminal.c:779` has no counterpart; links need the context menu.
-13. **The narrow breakpoint has no `apply`/`unapply`** (`window.rb:344`).
-    "Show All Tabs" stays in the menu when narrow, and the overview does not close
-    when the window widens again.
+13. ~~**The narrow breakpoint has no `apply`/`unapply`**~~ Fixed — see the
+    window unit, above.
 14. **A simple error opens the full details dialog, and a failed "Report Issue"
     is silent** (`spad.rb:31,76`). Two `AdwAlertDialog`s from `kgx-spad.c`
     have no counterpart.
@@ -615,8 +642,8 @@ driving each signal — have not been done. Every verdict here is static.
     usually not pre-selected, and the preview text is hard-coded ASCII instead of
     the locale's sample string.
 16. **Smaller, confirmed:** `enable-a11y` not set on the terminal
-    (`terminal.rb:74`); no `GtkWindowGroup` per window (`window.rb:201`);
-    `AdwTabBar.inverted` never follows the decoration layout; the `main-box` class
-    unattached; a remote tab's tooltip is `nil` instead of its URI
+    (`terminal.rb:74`); a remote tab's tooltip is `nil` instead of its URI
     (`tab.rb:342`); the copy-confirmation icon and its 2000 ms reset differ from
-    upstream's bundled icon and 500 ms.
+    upstream's bundled icon and 500 ms. (`GtkWindowGroup` per window,
+    `AdwTabBar.inverted` and the `main-box` class — also originally listed here
+    — are fixed; see the window and fullscreen-box units, above.)

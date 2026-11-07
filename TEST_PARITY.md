@@ -1,13 +1,32 @@
 # Test parity — console-rb
 
+> **Staleness note (this round):** this ledger was several commits behind
+> `ruby` HEAD (it predates 464a7a0 and a456082). Since that round,
+> `test/services_test.rb` has grown real coverage of the depot, despatcher,
+> spad source and livery manager (`check_depot`, `check_despatcher`,
+> `check_spad_source`, and the livery round-trip checks already counted
+> under `test-livery.c` in `actions_test.rb`) that this ledger's **25** never
+> credited — but turning that into an exact new total needs checking each
+> upstream test function (`test-depot.c` has 3, `test-despatcher.c` 1,
+> `test-spad-source.c` 4) against what `services_test.rb` actually asserts
+> for full-vs-partial credit, the same way the rest of this ledger does, and
+> that full recheck was not redone this round. The one count below changed
+> with full confidence is the Closures row's `test-icon-closures.c`
+> contribution: `status_as_icon` (all 5 cases, including the
+> `remote|privileged -> remote` precedence case) is now ported into
+> `services_test.rb#check_tab_badge_precedence`, verified against
+> upstream's own `status_as_icon_cases` table. Treat every other number
+> below as still carrying the previous round's staleness until a full
+> `component-scan.sh`-equivalent re-audit of the test suite is run.
+
 | | |
 |---|---|
 | Upstream | `main` @ `599b703` (GNOME Console, C) |
-| Port | `ruby` @ `dd5fbc0` |
+| Port | `ruby` @ `9ef75ce` (was `dd5fbc0`) |
 | Test command | `rake test` |
 | Upstream tests | **148** (21 files; 12 are repeaters expanding to ~90 further runtime cases) |
-| Ported | **25** |
-| Gaps | **123** |
+| Ported | **26** (was 25; +1 confirmed this round — `status_as_icon`; the depot/despatcher/spad-source/livery recount above is still owed) |
+| Gaps | **122** |
 
 Two states only. `ported` means a named Ruby test pins **the whole** property.
 `gap` is everything else — including a test that pins part of a property, and
@@ -23,10 +42,10 @@ By area (these three groups partition all 148 upstream tests):
 
 | Area | Upstream files | Tests | Ported | Gaps |
 |---|---|---:|---:|---:|
-| Closures, template machinery, spawn wrappers | `test-file-closures.c`, `test-shared-closures.c`, `test-icon-closures.c`, `test-templated.c`, `test-spad-source.c`, `test-depot.c`, `test-despatcher.c` | 44 | 4 | 40 |
+| Closures, template machinery, spawn wrappers | `test-file-closures.c`, `test-shared-closures.c`, `test-icon-closures.c`, `test-templated.c`, `test-spad-source.c`, `test-depot.c`, `test-despatcher.c` | 44 | 5 | 39 |
 | Widgets and behaviour | `test-window.c`, `test-spad.c`, `test-train.c`, `test-livery.c`, `test-tab.c`, `test-empty.c`, `test-theme-switcher.c`, `test-pages.c`, `test-remote.c`, `test-playbox.c` | 44 | 12 | 32 |
 | Pure logic | `test-settings.c`, `test-utils.c`, `test-palette.c`, `test-proxy-info.c`, `test-colour-utils.c`, `test-system-info.c`, `test-locale.c` | 60 | 9 | 51 |
-| **Total** | | **148** | **25** | **123** |
+| **Total** | | **148** | **26** | **122** |
 
 A test that pins part of a property counts as a gap. **Seventeen** port tests
 cover their upstream counterpart only partly — direction but not saturation,
@@ -50,12 +69,17 @@ These are not merely untested. The port's behaviour differs from upstream
 **now**, and the absent test is why nobody noticed. Each is a bug to fix, not
 just a test to write.
 
-### 1. Tab status badge precedence is inverted
-`lib/console_rb/pages.rb:82` tests `:privileged` before `:remote`. Upstream
-(`test-icon-closures.c`, `status_as_icon`) pins `REMOTE|PRIVILEGED` → **remote**.
-A root shell over SSH therefore badges as privileged, not remote — the single
-most dangerous state the indicator exists to signal. There is no playbox icon
-at all.
+### 1. ~~Tab status badge precedence is inverted~~ — fixed in code, now tested
+Fixed since this entry was written: `lib/console_rb/pages.rb`'s
+`STATUS_ICONS` tests `remote` first, then `playbox`, then `privileged` —
+matching upstream's `status_as_icon_cases` order, so `REMOTE|PRIVILEGED`
+already resolves to **remote**. What this entry's own point stands on is
+still true as written, though: until this round, nothing exercised
+`indicator_for`/`STATUS_ICONS` directly — only that the icon files exist on
+disk (`check_icons`) — so a silent regression of exactly this precedence
+would not have been caught. `test/services_test.rb#check_tab_badge_precedence`
+now pins all five of upstream's `status_as_icon` cases, including
+`REMOTE|PRIVILEGED` → remote.
 
 ### 2. `toolbox list` is classified as a container session
 `kgx_is_playbox` requires the *subcommand*: `toolbox enter` yes, `toolbox list`
@@ -150,8 +174,8 @@ reaches VTE unclamped.
 | 25 | `format_percentage/case_%` — repeater, 7 cases | half-up rounding, negatives, `2.556`→`256%` | `actions_test.rb#the zoom label tracks the scale` pins 1.5→150% **only** | gap | The zoom label rounds half-away-from-zero and handles negative scales |
 | 26 | `text_as_variant` | the copy action's target carries exactly the buffer text | — | gap | The copy button copies the message currently on screen |
 | 27 | `text_non_empty` | empty text drives the error-message group's visibility | — | gap | The error dialog hides its message box when there is no message |
-| 28 | `decoration_layout_is_inverted/case_%` — repeater, 9 cases | tab bar inverts only when window buttons sit left | — | gap | The tab bar sits on the side the user's button layout implies |
-| 29 | `status_as_icon/<flags>` — repeater, 5 cases | remote > playbox > privileged; plain session gets no badge | — | gap | A remote+root tab is badged **remote**; a plain tab not at all |
+| 28 | `decoration_layout_is_inverted/case_%` — repeater, 9 cases | tab bar inverts only when window buttons sit left | `window.rb#decoration_layout_inverted?` now implements the behaviour (`track_decoration_layout`), but no test pins its own 9 upstream cases directly | **gap** (behaviour implemented, unpinned) | The tab bar sits on the side the user's button layout implies |
+| 29 | `status_as_icon/<flags>` — repeater, 5 cases | remote > playbox > privileged; plain session gets no badge | `services_test.rb#check_tab_badge_precedence` | **ported** | — |
 | 30 | `ringing_as_icon` | a ringing tab gets the bell icon, a quiet one none | — | gap | A tab that rang while you were away shows an attention mark |
 
 **2 ported · 28 gaps**

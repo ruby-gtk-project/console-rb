@@ -106,6 +106,16 @@ The integration suite spawns a real shell through a pty, types at it and reads
 the output back off the terminal grid. The action suite drives every `app.*` and
 `win.*` action and opens every dialog.
 
+`test/drive_console_rb.rb` is a separate headless end-to-end drive: a real
+window, a real pty-backed shell, every dialog, screenshots. `rake schema`
+must run first — the schema is not compiled by this script itself — or it
+aborts before any window opens:
+
+```sh
+rake schema
+nix develop --command xvfb-run -a ruby test/drive_console_rb.rb
+```
+
 ## Relationship to upstream
 
 This is an independent port in a separate repository under a different

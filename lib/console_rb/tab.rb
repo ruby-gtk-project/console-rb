@@ -191,6 +191,11 @@ module ConsoleRb
 
     # Dropped paths are typed at the prompt rather than executed, so the user
     # still has to press Return.
+    # kgx_tab_extra_drop (kgx-tab.c:1167-1177): a file dropped on this tab's
+    # row in the tab bar, rather than directly on its terminal, is handled
+    # exactly the same way — typed at the prompt.
+    def extra_drop(value) = drop_target.dropped(value)
+
     def drop_target
       @drop_target ||= DropTarget.new(
         on_drop: ->(text) { terminal.terminal.feed_child(text) },

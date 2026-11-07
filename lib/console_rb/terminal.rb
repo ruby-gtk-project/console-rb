@@ -402,8 +402,24 @@ module ConsoleRb
       @settings.resolve_theme(Adwaita::StyleManager.default.dark?)
     end
 
+    # kgx-terminal.c binds this straight to the window's own `translucent`
+    # property (settings.transparency AND window.floating). The port's
+    # `Terminal` has no reference back to its `Window`, so this reads the
+    # same "floating" condition directly off the realized root's surface
+    # state (Window#floating? does the identical check) rather than the
+    # placeholder `!terminal.root.nil?`, which was always true once realised
+    # and so never turned transparency off for a maximised, tiled or
+    # fullscreen window.
     def translucent?
-      @settings.transparency? && !terminal.root.nil?
+      @settings.transparency? && floating?
+    end
+
+    def floating?
+      surface = terminal.root&.surface
+      surface&.state&.then do |state|
+        !(state.maximized? || state.fullscreen? || state.tiled? ||
+          state.top_tiled? || state.right_tiled? || state.bottom_tiled? || state.left_tiled?)
+      end || false
     end
   end
 end

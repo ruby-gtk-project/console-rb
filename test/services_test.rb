@@ -39,6 +39,7 @@ class ServicesTest
     check_despatcher
     check_depot
     check_icons
+    check_tab_badge_precedence
     report
   end
 
@@ -242,6 +243,34 @@ class ServicesTest
         end
       end
     end
+  end
+
+  # --- Tab badge precedence -------------------------------------------------
+
+  # Ported from upstream's tests/test-icon-closures.c status_as_icon_cases:
+  # Pages::STATUS_ICONS must be walked in this exact order, so a tab that is
+  # both remote and privileged shows the remote badge, not the privileged one.
+  TabDouble = Struct.new(:status)
+
+  def check_tab_badge_precedence
+    pages = ConsoleRb::Pages.new(
+      settings: nil, watcher: nil, on_zoom: -> {}, on_status_change: -> {},
+      on_bell: -> {}, on_empty: -> {}, on_create_tearoff_host: -> {},
+      on_search_change: ->(_enabled) {}
+    )
+    check('remote alone shows the remote icon',
+          names(pages.indicator_for(TabDouble.new([:remote]))).include?('status-remote-symbolic'))
+    check('playbox alone shows the playbox icon',
+          names(pages.indicator_for(TabDouble.new([:playbox]))).include?('status-playbox-symbolic'))
+    check('privileged alone shows the privileged icon',
+          names(pages.indicator_for(TabDouble.new([:privileged]))).include?('status-privileged-symbolic'))
+    check('remote and privileged together still show the remote icon',
+          names(pages.indicator_for(TabDouble.new(%i[remote privileged]))).include?('status-remote-symbolic'))
+    check('no status flags show no icon', pages.indicator_for(TabDouble.new([])).nil?)
+  end
+
+  def names(icon)
+    icon&.names || []
   end
 end
 

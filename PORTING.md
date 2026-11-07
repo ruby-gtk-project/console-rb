@@ -42,31 +42,48 @@ behaviour goes with them:
   weak refs and a `PageDiedData` struct). `Pages` keeps a plain hash keyed by
   widget, and `app.focus-page` — the registry's only consumer — is implemented
   as a lookup across the open windows.
-- **`KgxDepot` / `KgxDespatcher`** — async wrappers around `vte_pty_spawn_async`
-  and the D-Bus `OpenURI` portal. `Tab#spawn` calls `spawn_async` directly and
-  `Terminal#launch` uses `Gtk::UriLauncher`.
 - **`KGX_DEFINE_DATA` closure structs** (`PageDiedData`, `SpawnData`,
-  `OpenURIData`, `ShowInData`, `StartData`) — every one is a Ruby block.
+  `OpenURIData`, `ShowInData`, `StartData`) — every one is a Ruby block, so no
+  struct is needed to carry state into an async callback.
 - **`KgxTemplated`, `kgx-*-closures.h`, `kgx-marshals.list`** — machinery for
-  `.ui` template bindings, which this port does not use.
-- **`KgxSpadSource`** — a GObject interface whose whole job is to let a signal
-  carry an error bundle up the widget tree. Replaced by a callback.
+  `.ui` template bindings, which this port does not use; widgets are built in
+  code (see Architecture, above).
+
+`KgxDepot`/`KgxDespatcher` and `KgxSpadSource` were listed here in an earlier
+draft of this file as dropped. That was wrong even then — this port still
+needs an async spawn path, a portal `OpenURI` call, and a way for a spad to
+report an error up through the tab — and it is now also stale: both are
+ported as real classes, `lib/console_rb/depot.rb` and
+`lib/console_rb/despatcher.rb`, and `KgxSpadSource` is
+`lib/console_rb/spad_source.rb`, a plain Ruby mixin in place of the GObject
+interface (a module with `include`d callback state rather than a vtable,
+since Ruby has no need of the interface machinery to get the same contract).
+Their behaviour, not just their presence, is scored on the component-parity
+ledger — see `COMPONENT_PARITY.md` units for Depot/Despatcher and SpadSource.
 
 ### Not ported
 
-Two things, both stated plainly rather than quietly dropped:
+I have not ported these. Both are stated plainly rather than quietly dropped
+or stubbed:
 
 - **`--wait` beyond a single invocation.** The flag is implemented: the
   application holds itself open until the tabs that invocation started have
   exited. What is not reproduced is upstream's own TODO — it does not implement
-  `--wait` either.
+  `--wait` either, so there is no further behaviour on the other side to port.
 - **Tab tear-off by dragging to the desktop.** `win.detach-tab` moves a tab to a
-  new window, and `AdwTabView::create-window` is wired, but dragging a tab out of
-  the window onto the desktop is untested.
+  new window, and `AdwTabView::create-window` is wired, but I have not verified
+  that dragging a tab out of the window onto the desktop actually produces a
+  second top-level window end to end; it is wired but untested.
 
-Everything else in the original is present. Three items that an earlier draft of
-this file listed as "not ported" turned out to be workable and are now
-implemented — see FINDINGS.md §2, §7 and the proxy notes:
+See `COMPONENT_PARITY.md` for the fuller, currently-tracked list of gaps this
+round did not close (tab context menu, `translucent`/`devel` style classes,
+`Gtk::WindowGroup`, the `tab` action group, `Adw::Breakpoint` apply/unapply,
+extra drop targets, and others) — that ledger, not this file, is the
+up-to-date source for what remains.
+
+Three items that an earlier draft of this file listed as "not ported" turned
+out to be workable and are now implemented — see FINDINGS.md §2, §7 and the
+proxy notes:
 
 - `software-flow-control` — via termios on the pty master, since `spawn_async`
   exposes no `child_setup` hook.

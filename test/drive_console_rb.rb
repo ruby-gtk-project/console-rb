@@ -15,8 +15,14 @@
 # `require` prove nothing about a UI; this is the one that actually opens a
 # window.
 #
+# Prerequisite: the GSettings schema must be compiled first (`rake schema`),
+# or ConsoleRb::Settings raises a schema lookup error before any window opens.
+# data/schemas/gschemas.compiled is gitignored, so a clean checkout has no
+# compiled schema until that task runs once.
+#
 # Run it from the repository root:
 #
+#   rake schema
 #   nix develop --command xvfb-run -a ruby test/drive_console_rb.rb
 #
 # The specs under spec/ (currently empty — see spec/README.md) would cover the

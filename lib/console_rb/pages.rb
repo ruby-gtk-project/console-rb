@@ -127,11 +127,33 @@ module ConsoleRb
     end
 
     def detach_selected_page
-      tab_view.selected_page&.then do |page|
+      selected_tab&.then { |tab| detach_page(tab) }
+    end
+
+    # win.detach-tab and the `tab.detach` action group (tab overview context
+    # menu) both move a tab to a brand-new window; this is the shared move
+    # itself, whichever tab the caller names.
+    def detach_page(tab)
+      page_for(tab)&.then do |page|
         @on_create_tearoff_host.call.then do |host|
           tab_view.transfer_page(page, host.tab_view, 0)
         end
       end
+    end
+
+    # The page the `tab` action group acts on — kgx-pages.c's `action_page`,
+    # set by AdwTabView's `setup-menu` signal when a context menu opens
+    # against a specific tab, nil otherwise.
+    attr_writer :action_page
+
+    # kgx_pages_close_page / kgx_pages_detach_page: act on `action_page`,
+    # falling back to the selected page when no context menu set it.
+    def close_action_page
+      (@action_page || tab_view.selected_page)&.then { |page| tab_view.close_page(page) }
+    end
+
+    def detach_action_page
+      tab_for(@action_page || tab_view.selected_page)&.then { |tab| detach_page(tab) }
     end
 
     # AdwTabView expects an async confirmation: returning true here defers the

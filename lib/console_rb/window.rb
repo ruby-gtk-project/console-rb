@@ -46,16 +46,32 @@ module ConsoleRb
           end
 
           tab_bar.view = pages.tab_view
+          wire_extra_drop_targets
+          track_decoration_layout
         end
 
         find_button.signal_connect('toggled') do
           pages.selected_tab&.search_mode_enabled = find_button.active? unless @syncing_find
         end
 
+        win.insert_action_group('tab', tab_actions)
         win.add_breakpoint(narrow_breakpoint)
         win.signal_connect('notify::fullscreened') { fullscreened_changed }
         win.signal_connect('close-request') { close_requested }
+        win.signal_connect('realize') { track_floating_state }
+        # `devel` (kgx-window.c:672-674) is gated on an `IS_DEVEL` compile-time
+        # flag that only exists for upstream's separate Devel build profile
+        # (app id `org.gnome.Console.Devel`). This port ships a single
+        # profile under `org.gnome.Console.Rb` with no devel counterpart, so
+        # there is no condition to key the class off without inventing a
+        # second profile — left out rather than hard-coded to a constant
+        # value, which would just be a dead `add_css_class` call.
       end
+
+      # kgx-window.c:kgx_window_init binds self into a GtkWindowGroup so this
+      # window's modal dialogs (the close confirmation, the paste prompt) do
+      # not block input to any other window in the application.
+      Gtk::WindowGroup.new.add_window(window)
 
       menu_popover.add_child(theme_switcher.build, 'theme-switcher')
       menu_popover.add_child(zoom_controls, 'zoom-controls')
@@ -91,6 +107,111 @@ module ConsoleRb
             end
           )
         end
+      end
+    end
+
+    # kgx-window.c:678-685 — a file (or text) dragged over the tab bar or the
+    # tab overview, not onto the terminal itself, is still accepted: it is
+    # typed at the prompt of whichever tab it lands on. Only the tab bar's
+    # drop is actually routed anywhere (kgx-window.ui:265, `extra_drag_drop`
+    # -> `kgx_tab_extra_drop`); the overview's own `setup_extra_drop_target`
+    # call registers the accepted types without a handler to route the drop
+    # to, upstream's own documented limitation ("this unfortunately doesn't
+    # allow us to workaround the portal situation") rather than a gap this
+    # port introduced.
+    EXTRA_DROP_TYPES = [Gdk::FileList.gtype, Gio::File.gtype, GLib::Type::STRING].freeze
+
+    def wire_extra_drop_targets
+      tab_bar.setup_extra_drop_target(:copy, EXTRA_DROP_TYPES)
+      tab_bar.signal_connect('extra-drag-drop') { |_bar, page, value| extra_drag_drop(page, value) }
+      tab_overview.setup_extra_drop_target(:copy, EXTRA_DROP_TYPES)
+    end
+
+    # kgx-window.ui:256-264 + kgx-utils.c's kgx_decoration_layout_is_inverted:
+    # the tab bar (and the tab overview, bound to it) mirror onto whichever
+    # side the window controls actually render — "close" appearing more times
+    # on the left half of `gtk-decoration-layout` than the right means the
+    # window is left-handed, so the tabs flip too.
+    def track_decoration_layout
+      gtk_settings = Gtk::Settings.get_for_display(window.display)
+      gtk_settings.signal_connect('notify::gtk-decoration-layout') { sync_tab_bar_inverted(gtk_settings) }
+      sync_tab_bar_inverted(gtk_settings)
+    end
+
+    def sync_tab_bar_inverted(gtk_settings)
+      tab_bar.inverted = decoration_layout_inverted?(gtk_settings.gtk_decoration_layout)
+      tab_overview.inverted = tab_bar.inverted?
+    end
+
+    def decoration_layout_inverted?(layout)
+      if layout.to_s.empty?
+        false
+      else
+        left, right = layout.split(':', 2)
+        left.to_s.scan('close').size > right.to_s.scan('close').size
+      end
+    end
+
+    def extra_drag_drop(page, value)
+      pages.tab_for(page)&.then do |tab|
+        tab.extra_drop(value.value)
+      end
+      true
+    end
+
+    # kgx-window.c installs `tab.close`/`tab.detach` as parameterless widget
+    # actions (kgx-window.c:590-591) that act on `Pages#action_page` — the page
+    # a context menu was last opened against, set from AdwTabView's
+    # `setup-menu` signal — falling back to the selected page when nothing set
+    # it (kgx-pages.c:901-916, 922-937). Building the tab overview's own
+    # context menu for these is left for next round (see PORTING.md); the
+    # action group and the fallback-to-selected behaviour, which is exactly
+    # what upstream falls back to before any menu has ever been opened, are
+    # implemented here.
+    def tab_actions
+      @tab_actions ||= Gio::SimpleActionGroup.new.tap do |group|
+        {
+          'close' => -> { pages.close_action_page },
+          'detach' => -> { pages.detach_action_page }
+        }.each do |name, handler|
+          group.add_action(
+            Gio::SimpleAction.new(name).tap do |action|
+              action.signal_connect('activate') { handler.call }
+            end
+          )
+        end
+      end
+    end
+
+    # kgx-window.ui:55-62 binds `translucent` to `settings.transparency AND
+    # self.floating`, where "floating" is GDK's own name for "not maximized,
+    # not tiled to an edge, not fullscreen" (state_to_floating,
+    # kgx-window.c:634-651). `notify::fullscreened` already exists; this adds
+    # the maximized/tiled half via the realized surface's own state, which is
+    # the only place GTK exposes tiling.
+    def track_floating_state
+      window.surface.signal_connect('notify::state') { refresh_translucent }
+      window.signal_connect('notify::fullscreened') { refresh_translucent }
+      window.signal_connect('notify::maximized') { refresh_translucent }
+      refresh_translucent
+    end
+
+    # The surface goes away on unrealize (e.g. while the window is being
+    # destroyed) before the `notify::state` handler that reads it has been
+    # disconnected, so this has to tolerate a nil surface rather than assume
+    # the realize->unrealize pairing already took the handler with it.
+    def floating?
+      window.surface&.state&.then do |state|
+        !(state.maximized? || state.fullscreen? || state.tiled? ||
+          state.top_tiled? || state.right_tiled? || state.bottom_tiled? || state.left_tiled?)
+      end || false
+    end
+
+    def refresh_translucent
+      if @settings.transparency? && floating?
+        window.add_css_class('translucent')
+      else
+        window.remove_css_class('translucent')
       end
     end
 
@@ -355,7 +476,23 @@ module ConsoleRb
         breakpoint.add_setter(tab_button, 'visible', true)
         breakpoint.add_setter(new_tab_button, 'visible', false)
         breakpoint.add_setter(tab_bar, 'visible', false)
+        # The setters above cover the property flips a <setter> block does in
+        # upstream's .ui. "Show All Tabs" staying in the primary menu while
+        # narrow, and the overview failing to close again once the window
+        # widens past the breakpoint, are the two behaviours that only run
+        # from the `apply`/`unapply` signals, not from a property binding.
+        breakpoint.signal_connect('apply') { narrow_breakpoint_applied }
+        breakpoint.signal_connect('unapply') { narrow_breakpoint_unapplied }
       end
+    end
+
+    def narrow_breakpoint_applied
+      actions.lookup_action('show-tabs-desktop').enabled = false
+    end
+
+    def narrow_breakpoint_unapplied
+      actions.lookup_action('show-tabs-desktop').enabled = true
+      tab_overview.open = false
     end
 
     # --- Menus ---------------------------------------------------------------
