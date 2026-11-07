@@ -106,15 +106,26 @@ Gem::Specification.new do |spec|
 
   # The GObject Introspection bindings this app needs.
   # VTE is the terminal widget itself -- lib/console_rb/terminal.rb is built on
-  # Vte::Terminal. GTop reads the per-process statistics the tab headers show
-  # (see FINDINGS.md #17: it loads but its functions are not callable, so
-  # process_info.rb still reads /proc directly).
+  # Vte::Terminal.
   #
-  # Each is a loader over one typelib, so it also needs that typelib present at
-  # runtime. flake.nix carries them for the dev shell; a packaged app needs the
-  # distribution's equivalents, which each gem's README names.
+  # NOTE: `libgtop` used to be declared here too, for the per-process
+  # statistics the tab headers show. It is NOT a usable binding: it loads
+  # (`require "libgtop"` populates `GTop` with hundreds of constants), but
+  # every function raises before doing anything, because libgtop's GI
+  # annotations are flat, lowercase, lib-prefixed C names and ruby-gnome
+  # resolves each argument's type from that raw name, producing a generated
+  # arity that does not match libgtop's documented signature (see
+  # FINDINGS.md #17 for the exact errors). There is no workaround to apply --
+  # the binding itself cannot be called -- so the dependency was removed
+  # rather than left declared and unused. lib/console_rb/process_info.rb
+  # reads /proc directly instead, which is upstream's own fallback path when
+  # libgtop is unavailable, so this is not a regression.
+  #
+  # Each remaining entry is a loader over one typelib, so it also needs that
+  # typelib present at runtime. flake.nix carries them for the dev shell; a
+  # packaged app needs the distribution's equivalents, which each gem's
+  # README names.
   spec.add_dependency("vte4", "~> 4.3")
-  spec.add_dependency("libgtop", "~> 1.0")
 
   # Translation lookup (lib/console_rb/i18n.rb) shares GNOME Console's own
   # message catalogue under po/ and data/locale -- see FINDINGS.md #10 for the

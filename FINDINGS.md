@@ -453,11 +453,11 @@ constant GTop::Glibtop`).
 
 **Not worked around.** `lib/console_rb/process_info.rb` reads `/proc` directly
 instead, which is what upstream's own fallback path does when libgtop is
-unavailable at build time. This is the one gem in this port's dependency list
-that could not be put to use; `console-rb.gemspec` and `nix/Gemfile` still
-declare it, both so the typelib wiring stays documented and because it is a
-real, correct runtime dependency — it is only the *Ruby* entry points that do
-not work.
+unavailable at build time. This is the one gem that could not be put to use at
+all from Ruby, so `console-rb.gemspec`, `nix/Gemfile` and `flake.nix`'s
+`gtkStack` no longer declare it or carry its typelib — a declared dependency
+that nothing can call is worse documentation than no dependency, and the
+comment above (plus this entry) is where the "why" lives instead.
 
 ---
 

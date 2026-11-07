@@ -26,9 +26,11 @@
           libadwaita
           vte-gtk4
           harfbuzz
-          # Carrying the typelibs for this app's binding gems. gtkStack feeds
-          # both buildInputs and typelibPath, so one list does both jobs.
-          libgtop
+          # gtkStack feeds both buildInputs and typelibPath, so one list does
+          # both jobs. NOTE: `libgtop` used to be carried here for the
+          # `libgtop` gem's typelib; that gem's bindings are not callable from
+          # Ruby at all (FINDINGS.md #17), so both the gem dependency and this
+          # typelib were removed rather than kept around unused.
         ]
         # The Ruby `pkg-config` gem resolves `Requires.private` transitively and
         # hard-fails if any .pc in the chain is missing, so gtk4's whole

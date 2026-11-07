@@ -95,16 +95,6 @@
     };
     version = "4.4.0";
   };
-  gem_kit = {
-    groups = ["default"];
-    platforms = [];
-    source = {
-      remotes = ["https://rubygems.org"];
-      sha256 = "0dx9w041lqzr4jd0m9as0v5v6n3fj2hcg74p2gyswr2y2a6zc5v9";
-      type = "gem";
-    };
-    version = "0.2.0";
-  };
   gettext = {
     dependencies = ["erubi" "locale" "prime" "racc" "text"];
     groups = ["default"];
@@ -191,17 +181,6 @@
       type = "gem";
     };
     version = "3.1.0";
-  };
-  libgtop = {
-    dependencies = ["gem_kit" "gobject-introspection"];
-    groups = ["default"];
-    platforms = [];
-    source = {
-      remotes = ["https://rubygems.org"];
-      sha256 = "1jz8mlmma013hd2zh0m8vd1ibmgkd72mcsis9z63jzjinrf75aiz";
-      type = "gem";
-    };
-    version = "1.1.0";
   };
   locale = {
     dependencies = ["fiddle"];

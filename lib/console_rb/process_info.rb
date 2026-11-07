@@ -2,14 +2,14 @@
 
 module ConsoleRb
   # A snapshot of one process read out of /proc. Upstream reads the same fields
-  # through libgtop when it is available. This port depends on the `libgtop`
-  # gem too, but its functions are not callable from Ruby at all -- see
-  # FINDINGS.md #17: the GI bindings are generated from libgtop's lowercase,
-  # lib-prefixed names, and ruby-gnome resolves argument types from those raw
-  # names, so every call dies with an arity ArgumentError before it can do
-  # anything. Reading /proc directly is upstream's own fallback path when
-  # libgtop is unavailable, so this is not a regression, just permanent on
-  # this binding.
+  # through libgtop when it is available. The `libgtop` gem loads, but its
+  # functions are not callable from Ruby at all -- see FINDINGS.md #17: the GI
+  # bindings are generated from libgtop's lowercase, lib-prefixed names, and
+  # ruby-gnome resolves argument types from those raw names, so every call
+  # dies with an arity ArgumentError before it can do anything. There is no
+  # workaround for that, so this port does not depend on `libgtop` at all.
+  # Reading /proc directly is upstream's own fallback path when libgtop is
+  # unavailable, so this is not a regression, just permanent on this binding.
   class ProcessInfo
     MAX_TITLE_LENGTH = 100
 

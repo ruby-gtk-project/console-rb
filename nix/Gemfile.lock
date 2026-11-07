@@ -24,7 +24,6 @@ GEM
     gdk_pixbuf2 (4.4.0)
       gio2 (= 4.4.0)
       rake
-    gem_kit (0.2.0)
     gettext (3.5.2)
       erubi
       locale (>= 2.0.5)
@@ -49,9 +48,6 @@ GEM
       gdk4 (= 4.4.0)
       gsk4 (= 4.4.0)
     json (3.1.0)
-    libgtop (1.1.0)
-      gem_kit (~> 0.2)
-      gobject-introspection (~> 4.3)
     locale (2.1.5)
       fiddle
     matrix (0.4.3)
@@ -81,7 +77,6 @@ DEPENDENCIES
   adwaita
   gettext
   gtk4
-  libgtop
   vte4
 
 BUNDLED WITH
