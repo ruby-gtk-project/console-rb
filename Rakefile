@@ -172,7 +172,8 @@ rescue LoadError
 end
 desc 'Run the test suite (needs a display; uses Xvfb when one is not available)'
 task :test do
-  %w[test/integration_test.rb test/actions_test.rb].each do |script|
+  %w[test/integration_test.rb test/actions_test.rb test/services_test.rb
+     test/drive_console_rb.rb].each do |script|
     puts "\n== #{script}"
     sh({ 'GSETTINGS_SCHEMA_DIR' => File.expand_path('data/schemas', __dir__),
          'CONSOLE_RB_LOCALE_DIR' => File.expand_path('data/locale', __dir__) },
