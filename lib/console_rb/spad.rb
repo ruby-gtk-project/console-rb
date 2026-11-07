@@ -12,8 +12,8 @@ module ConsoleRb
     include I18n
 
     COPY_ICON = 'edit-copy-symbolic'
-    COPIED_ICON = 'object-select-symbolic'
-    COPIED_RESET_DELAY = 2000
+    COPIED_ICON = 'emblem-ok-symbolic'
+    COPIED_RESET_DELAY = 500
 
     def initialize(title:, body:, content: nil, error: nil, flags: [])
       @title = title

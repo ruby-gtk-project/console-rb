@@ -37,7 +37,17 @@ module ConsoleRb
       @listeners = []
       @exit_listeners = []
       @working = true
+      @ringing = false
     end
+
+    # kgx-tab.c's `working` and `ringing` properties: whether the shell has
+    # started yet, and whether the bell flash (bell-outline-symbolic on the
+    # tab) is currently showing. Both back Pages#refresh's AdwTabPage bindings.
+    def working? = @working
+
+    def ringing? = @ringing
+
+    RINGING_RESET_DELAY = 500
 
     def on_change(&block) = @listeners << block
 
@@ -381,6 +391,21 @@ module ConsoleRb
     # Window listens here to keep its find button in step with the search bar.
     attr_writer :on_search_change
 
-    def bell = @on_bell&.call
+    # kgx_tab_bell: the needs-attention flag is unconditional; the ringing
+    # flash (what Pages#refresh turns into the bell-outline indicator icon)
+    # only happens when the visual bell setting is on, and clears itself
+    # after 500ms same as upstream's own g_timeout_add_once.
+    def bell
+      if @settings.visual_bell?
+        @ringing = true
+        notify
+        GLib::Timeout.add(RINGING_RESET_DELAY) do
+          @ringing = false
+          notify
+          GLib::Source::REMOVE
+        end
+      end
+      @on_bell&.call
+    end
   end
 end

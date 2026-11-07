@@ -1,5 +1,23 @@
 # Component parity — console-rb
 
+> **Staleness note (round after `e999d74`):** this round fixed, without
+> re-running `component-scan.sh`, six items this ledger listed as open:
+> `theme_switcher.rb`'s check icon and `spad.rb`'s copy-confirmation icon now
+> use the bundled `theme-check-symbolic` / `emblem-ok-symbolic` instead of
+> stock `object-select-symbolic` (cross-cutting finding 2, and "real gaps"
+> #16), the copy icon's reset delay is now 500ms matching upstream's
+> `g_timeout_add_once` (also #16), the pages unit's `AdwTabView` now gets
+> `default-icon`, a `menu-model` (`tab.detach`/`tab.close`) and a `setup-menu`
+> handler that sets `action_page` for a real right-click (closing "real gaps"
+> #4's remaining half), and `Pages#refresh` now sets `icon` (the status
+> badge, moved off `indicator-icon` where it was wrongly living),
+> `indicator-icon` (now the `ringing`-driven bell flash it should always have
+> been, backed by a new `Tab#ringing?`/`Tab#bell` 500ms timeout) and
+> `keyword`/`loading` (closing "real gaps" #9). The pages unit's `GtkOverlay`
+> layer itself (terminal-size readout, drag-drop highlight) is still not
+> built. Every other line below predates this note; see the next note for
+> what it covers.
+
 > **Staleness note (this round):** the previous version of this ledger was
 > several commits behind HEAD and stated as live defects two things that were
 > already fixed in code by the time this round started — the fullscreen box's

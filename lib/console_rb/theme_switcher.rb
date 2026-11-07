@@ -84,7 +84,7 @@ module ConsoleRb
     def checks
       @checks ||= THEMES.each_key.to_h do |name|
         [name, Gtk::Image.new.tap do |image|
-          image.icon_name = 'object-select-symbolic'
+          image.icon_name = 'theme-check-symbolic'
           image.pixel_size = 13
           image.halign = :end
           image.valign = :end

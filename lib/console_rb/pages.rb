@@ -5,6 +5,8 @@ module ConsoleRb
   # Everything about closing a tab — the "still running" prompt, the detach and
   # the "last tab closed so close the window" rule — lives here.
   class Pages
+    include I18n
+
     attr_reader :settings
 
     def initialize(settings:, watcher:, on_zoom:, on_status_change:, on_bell:,
@@ -27,10 +29,25 @@ module ConsoleRb
         view.signal_connect('notify::selected-page') { selection_changed }
         view.signal_connect('page-attached') { |_view, _page, _pos| selection_changed }
         view.signal_connect('page-detached') { |_view, _page, _pos| pages_changed }
+        view.signal_connect('setup-menu') { |_view, page| @action_page = page }
       end
     end
 
-    def tab_view = @tab_view ||= Adwaita::TabView.new
+    def tab_view
+      @tab_view ||= Adwaita::TabView.new.tap do |view|
+        view.menu_model = tab_menu
+        view.default_icon = Gio::ThemedIcon.new('status-regular-symbolic')
+      end
+    end
+
+    # kgx-pages.ui's `tab-menu`: the context menu AdwTabView opens for a
+    # right-clicked tab, acting on whichever page `setup-menu` just recorded.
+    def tab_menu
+      @tab_menu ||= Gio::Menu.new.tap do |menu|
+        menu.append_section(nil, Gio::Menu.new.tap { |s| s.append(_('_Detach Tab'), 'tab.detach') })
+        menu.append_section(nil, Gio::Menu.new.tap { |s| s.append(_('_Close'), 'tab.close') })
+      end
+    end
 
     # --- Adding and removing -------------------------------------------------
 
@@ -67,24 +84,39 @@ module ConsoleRb
 
     def refresh(tab)
       page_for(tab)&.then do |page|
-        # Neither setter accepts nil in the bindings.
+        # Neither string setter accepts nil in the bindings.
         page.title = tab.display_title.to_s
         page.tooltip = tab.tooltip.to_s
-        page.indicator_icon = indicator_for(tab)
+        page.keyword = keyword_for(tab).to_s
+        page.loading = tab.working?
+        page.icon = status_icon_for(tab)
+        page.indicator_icon = ringing_icon_for(tab)
       end
       @on_status_change.call
     end
 
     # A remote, sandboxed or privileged session gets a badge on its tab so it is
     # recognisable in the overview even when the header bar colour is not shown.
-    # The icons and the order they are tested in are upstream's.
+    # The icons and the order they are tested in are upstream's kgx_status_as_icon.
     STATUS_ICONS = { remote: 'status-remote-symbolic',
                      playbox: 'status-playbox-symbolic',
                      privileged: 'status-privileged-symbolic' }.freeze
 
-    def indicator_for(tab)
+    def status_icon_for(tab)
       STATUS_ICONS.find { |flag, _icon| tab.status.include?(flag) }
                   &.then { |_flag, icon| Gio::ThemedIcon.new(icon) }
+    end
+
+    # kgx_ringing_as_icon: the bell flash that briefly replaces the tab's
+    # indicator while Tab#ringing? is true (see Tab#bell).
+    def ringing_icon_for(tab)
+      Gio::ThemedIcon.new('bell-outline-symbolic') if tab.ringing?
+    end
+
+    # kgx_file_as_display: the local path only, nil (never the URI) for a
+    # remote cwd — what makes the tab overview's search find a tab by directory.
+    def keyword_for(tab)
+      tab.path&.path
     end
 
     # A shell that exited on its own takes its tab with it, matching upstream.
@@ -140,11 +172,6 @@ module ConsoleRb
         end
       end
     end
-
-    # The page the `tab` action group acts on — kgx-pages.c's `action_page`,
-    # set by AdwTabView's `setup-menu` signal when a context menu opens
-    # against a specific tab, nil otherwise.
-    attr_writer :action_page
 
     # kgx_pages_close_page / kgx_pages_detach_page: act on `action_page`,
     # falling back to the selected page when no context menu set it.
