@@ -259,14 +259,14 @@ class ServicesTest
       on_search_change: ->(_enabled) {}
     )
     check('remote alone shows the remote icon',
-          names(pages.indicator_for(TabDouble.new([:remote]))).include?('status-remote-symbolic'))
+          names(pages.status_icon_for(TabDouble.new([:remote]))).include?('status-remote-symbolic'))
     check('playbox alone shows the playbox icon',
-          names(pages.indicator_for(TabDouble.new([:playbox]))).include?('status-playbox-symbolic'))
+          names(pages.status_icon_for(TabDouble.new([:playbox]))).include?('status-playbox-symbolic'))
     check('privileged alone shows the privileged icon',
-          names(pages.indicator_for(TabDouble.new([:privileged]))).include?('status-privileged-symbolic'))
+          names(pages.status_icon_for(TabDouble.new([:privileged]))).include?('status-privileged-symbolic'))
     check('remote and privileged together still show the remote icon',
-          names(pages.indicator_for(TabDouble.new(%i[remote privileged]))).include?('status-remote-symbolic'))
-    check('no status flags show no icon', pages.indicator_for(TabDouble.new([])).nil?)
+          names(pages.status_icon_for(TabDouble.new(%i[remote privileged]))).include?('status-remote-symbolic'))
+    check('no status flags show no icon', pages.status_icon_for(TabDouble.new([])).nil?)
   end
 
   def names(icon)
