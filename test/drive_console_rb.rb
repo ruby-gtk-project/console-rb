@@ -167,6 +167,12 @@ GtkDriver.drive(ConsoleRb::Application.new, shots: SHOTS, startup_delay_ms: 1200
   end
 
   d.step('an idle second tab closes without any prompt') do
+    # The freshly spawned shell's own rc scripts can still be forking
+    # transient helpers (completion setup, prompt tooling) for a moment after
+    # the pty comes up; give it a real tick of wall-clock time to settle
+    # before asking the watcher whether anything is still running, or this
+    # flakes on exactly that startup window rather than testing idleness.
+    pump(1500)
     app.window.pages.tabs.last.then do |tab|
       d.check('an idle shell reports no running commands') { tab.close_safely? }
     end
