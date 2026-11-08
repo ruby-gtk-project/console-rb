@@ -1,160 +1,138 @@
-# Accountability ensurance — console-rb (2026-11-07 audit, re-verified at HEAD `6bb6956`)
+# Accountability ensurance — console-rb (2026-11-08 audit, re-verified at HEAD `b3420d6`)
 
 Scope per the skill: `lib/`, `exe/`, `.reports/`, `PORTING.md`, grepped for
-`TODO`, `FIXME`, `not implemented`, `for now`, `in a future`, plus every green
-claim checked for whether it rests on something never executed.
+`TODO`, `FIXME`, `not implemented`, `for now`, `in a future`, plus every
+green claim checked for whether it rests on something never executed.
 
-This supersedes the same-day draft of this file, which was written against
-port `a5a2eab`. Commit `2b33b04` ("Close window-unit gaps, fix stale ledgers,
-and pin tab-badge precedence") landed after that draft and its commit message
-explicitly claims to close several of its findings. Each claim was re-checked
-against the actual diff and the actual files, not against the commit message.
+This supersedes the prior round's `.reports/accountability-ensurance.md`
+(written against `6bb6956`). Four commits landed since: `3f3daab`, `e999d74`
+(dependency cleanup), `44db0db` (tab context menu, bell/status-icon split,
+bundled icons), `b3420d6` (test fix). Each is checked against what it
+actually changed, not against its commit message.
 
-## Finding 1 (most serious, still open): a claimed fix to the excuse-language violation did not happen
+## Finding 1 (most serious, still open, unchanged): `PORTING.md`'s excuse-language headings are still there
 
-The prior round of this report (and, before it, this org's own
-`.claude/skills/accountability-ensurance/SKILL.md`, under "What it found
-here") flagged four hits in `PORTING.md`: `### Dropped deliberately` (line
-35), `### Not ported` (line 64), `"upstream's own TODO"` (line 71), plus the
-toothless `"not ported"` language around it.
-
-Commit `2b33b04`'s own message says: *"Docs: rewrite PORTING.md's 'Dropped
-deliberately'/'Not ported' sections, which still called Depot/Despatcher/
-SpadSource dropped after they were ported as real files in 464a7a0."*
-
-**Reading the actual diff (`git show 2b33b04 -- PORTING.md`) and the current
-file shows the headings were never removed.** What changed is the prose
-*under* the two excuse-labelled headings — three paragraphs correcting the
-Depot/Despatcher/SpadSource claim, and a rewording of the `--wait` and
-tab-tear-off bullets into first-person sentences. The section titles
-themselves, which are the thing the skill's own rule names as the violation
-("No document may contain a sentence that a reader could mistake for a
-decision"), are unchanged, verbatim, right now:
+Unchanged from every prior round. `grep -n '^### ' PORTING.md` still returns:
 
 ```
-$ grep -n '^### ' PORTING.md
 PORTING.md:35:### Dropped deliberately
 PORTING.md:64:### Not ported
 ```
 
-A heading reading "Dropped deliberately" is exactly the construction the
-skill names first in its table ("Presents the absence as chosen. Nobody chose
-it; nobody with authority was asked") and exactly what it rewrites in its own
-worked example from this file. The commit message describes a rewrite that,
-measured against the diff it actually produced, did not perform the one
-rewrite the skill requires — removing the status-field heading and replacing
-the whole entry with the first-person admission format. The prose under the
-headings got more accurate (and in the `--wait`/tear-off bullets, slightly
-closer to first person: "I have not ported these", "I have not verified")
-but every entry still gives a reason ("that was wrong even then", "upstream's
-own TODO", "I have not verified") instead of the one the skill requires —
-the writer's own incompetence — and the section titles still file the whole
-thing as settled architecture.
+No commit since `2b33b04` touches `PORTING.md` at all (confirmed:
+`git log 3467879..HEAD -- PORTING.md` is empty). The prior round's finding —
+that `2b33b04`'s commit message claimed to rewrite these sections but the
+diff shows only the prose under the headings changed, not the
+excuse-labelled headings themselves — stands exactly as written, because
+nothing has touched the file since. `PORTING.md:71` ("upstream's own TODO")
+is still there too. This is still the most serious open finding: a
+commit in this repository's own history asserts a documentation fix that a
+one-command diff shows did not happen, and three rounds later nobody has
+performed the rewrite the skill requires (first-person, admission-first,
+no reason given, heading removed).
 
-**This is the finding the task description asked to be treated as the most
-serious kind: a commit message asserting a documentation fix that the diff
-does not support.** The next reader of `PORTING.md` sees two headings that
-read as decisions and a commit history that says those decisions were already
-corrected. Both are false.
+## Finding 2 (new this round, second most serious): `COMPONENT_PARITY.md` now has the same self-contradiction pattern as Finding 1, in a different document
 
-### What is actually still missing behind the headings (unchanged from the prior round, re-verified)
+`44db0db` fixed two real, verified gaps in `pages.rb` — `setup-menu`,
+`menu-model`, `default-icon`, and the `icon`/`indicator-icon`/`keyword`/
+`loading` page properties (verified directly against
+`lib/console_rb/pages.rb:32,38,39,90-93`, not just the commit message). The
+commit's own `+18` lines to `COMPONENT_PARITY.md` correctly describe this
+fix in a prose note prepended to the top of the file. **But the detailed
+per-unit table and the numbered "real gaps" list items #4 and #9, further
+down the same file, were never touched and still assert the opposite**:
 
-- `GTree` page registry, `KGX_DEFINE_DATA` closure structs, `KgxTemplated`/
-  `.ui` template machinery — genuinely not needed as *mechanisms* (Ruby has
-  closures and GC), but the skill's rule is that the sentence must name the
-  **behaviour**, not the mechanism, and attribute the gap to the writer, not
-  to the mechanism being unnecessary. Neither bullet does this.
-- `--wait` beyond a single invocation and tab tear-off to the desktop by drag
-  are the two true remaining gaps in that section, now in first person but
-  still giving a reason ("upstream's own TODO", "I have not verified") rather
-  than the required admission.
+```
+$ sed -n '154p' COMPONENT_PARITY.md
+| `Adw.TabView` | 1 | 1 | — | ✓ ...; ✗ `setup-menu`; ✗ `menu-model`; ✗ `default-icon` | **gap** |
+$ sed -n '198,201p' COMPONENT_PARITY.md
+- **No tab context menu.** ... The port never assigns `tab_view.menu_model`.
+  Right-clicking a tab offers nothing.
+- **`setup-menu`** ... The port's `close_selected_page` / `detach_selected_page`
+  (`pages.rb:123-133`) always act on the *selected* page.
+```
 
-### Rewrite owed (still not performed)
+`close_selected_page`/`detach_selected_page` do not exist in the current
+file — `44db0db` renamed them to `close_action_page`/`detach_action_page` in
+the exact same commit this ledger text is supposed to describe. A reader
+who opens `COMPONENT_PARITY.md` and reads the detailed sections (which is
+most of the file, and the natural place to read for detail) walks away with
+a materially false picture of the `pages` unit, directly contradicted by a
+note 150 lines above it in the same document. This is structurally the same
+defect as Finding 1 — a document whose top-level claim and body claim
+disagree because a commit updated a summary without updating the detail it
+summarizes — and it is a second instance in this codebase, not a one-off.
+Full detail and the fix this needs: `.reports/component-parity.md`'s "Ledger
+self-contradiction" section.
 
-Every bullet under both headings needs the heading removed and the entry
-replaced with the skill's format: first person, leads with the admission,
-reason is the writer's own failure, names the user-facing behaviour, cites
-both sides with file:line. This was owed at the prior round and is owed now;
-`2b33b04` did not close it despite saying it did.
+This finding points the opposite direction from the usual false-green risk
+(it understates progress rather than overstating it), but it is reported
+with equal weight because the task's framing is about the ledger's
+reliability, not just about which direction an error points: a ledger that
+is wrong in either direction cannot be trusted without independent
+verification, which is exactly what this round had to do instead of reading
+the document at face value.
 
-## Finding 2 (resolved since the prior round): the two stale "green" ledgers were corrected
+## Finding 3 (still open, unchanged): new functionality landed with zero test coverage
 
-The prior round's Finding 2 — `COMPONENT_PARITY.md` and `TEST_PARITY.md`
-describing the fullscreen top-bar-style bug and the missing status-playbox
-icon as live defects after they were already fixed in code — **is now fixed**.
-`2b33b04` added a staleness note to both files' headers, struck through the
-resolved cross-cutting findings in `COMPONENT_PARITY.md` (`~~Fixed~~`, items
-1, 5, 8, 10, 13), and gave the paste dialog its own unit (13) with a `gap`
-verdict instead of leaving it unscored. Verified by reading the current files,
-not the commit message alone.
+`44db0db` added the tab context menu (`menu_model`, `setup-menu`,
+`tab.detach`/`tab.close` acting on `@action_page`). `grep -n
+'context\|menu_model\|setup.menu\|tab\.detach\|tab\.close'
+test/drive_console_rb.rb test/services_test.rb` returns zero hits for any of
+it. The commit message for `44db0db` says "Verified with
+test/drive_console_rb.rb (57/57) and the three existing test files... all
+green" — true, but misleading read in isolation: none of those 212 checks
+assert anything about the context menu, because none of them exercise a
+right-click or call `setup-menu`/inspect `menu_model`. "All green" here means
+"did not crash while present", not "the new feature was tested" — the exact
+distinction the task's framing draws ("a component no check exercises is
+unverified, not done"). The tab context menu is unverified, full stop,
+regardless of the overall gate's green.
 
-## Finding 3 (resolved): the tab-badge-precedence fix now has a regression test
+## Finding 4 (resolved, re-confirmed): the two previously-stale ledgers' prior staleness notes are unchanged and still accurate for what they cover
 
-The prior round's Finding 3 — a real fix (`pages.rb` testing `remote` before
-`privileged`) shipped with no test pinning it — is fixed.
-`test/services_test.rb#check_tab_badge_precedence` (added in `2b33b04`) ports
-upstream's `test-icon-closures.c` `status_as_icon_cases` table directly,
-including the `remote|privileged -> remote` precedence case, and is called
-from the suite's run list (`services_test.rb:42`). Confirmed present and
-confirmed it runs as part of `rake test`'s 55 `services_test.rb` checks this
-round (see `.reports/test-parity.md`).
+The prior round's Finding 2 (the `2b33b04`-era staleness notes in
+`COMPONENT_PARITY.md`/`TEST_PARITY.md` about the fullscreen box and status
+icons) remains correctly resolved and the notes remain accurate for what
+they describe — this round's Finding 2 above is a *new*, different
+staleness problem introduced by a *later* commit (`44db0db`), not a
+regression of this one.
 
-## Finding 4 (resolved): the schema prerequisite is now documented
+## Finding 5 (still open, unchanged): a scaffolded test lane with zero content
 
-The prior round's Finding 4 — the gate's documented one-line invocation aborts
-without an unstated `rake schema` step — is fixed. `README.md:25,100,110,115`
-and `test/drive_console_rb.rb:18-25` both now state the `rake schema`
-prerequisite explicitly.
+`spec/` still has only `README.md` and `spec_helper.rb`. No `*_spec.rb`
+exists anywhere in the repository, confirmed again at HEAD `b3420d6`.
 
-## Finding 5 (still open): a scaffolded test lane with zero content
+## Finding 6 (still open, unchanged): two test-parity ledgers disagree and neither says so
 
-`spec/README.md` documents a full RSpec harness; `find spec -type f` still
-returns only that README and `spec_helper.rb`. No `*_spec.rb` exists anywhere
-in the repository, confirmed again at HEAD `6bb6956`. Honestly labelled
-("currently empty" in the drive script's own header) but still unbuilt, which
-per the skill is "honest but toothless" — naming the absence does not retire
-the debt, and nothing in this round's commits added a single spec.
+`TEST_PARITY.md` (root, unchanged since `2b33b04`) says 26/148.
+`.reports/TEST_PARITY.md` says 0/148. Neither cross-references the other.
+Unchanged since the prior round — `git diff --stat 3467879..HEAD` touches
+neither file.
 
-## Finding 6 (new this round): the test-parity ledger's own admitted incompleteness is a gap, not a caveat
-
-`TEST_PARITY.md`'s current header (post-`2b33b04`) reads **148 upstream / 26
-ported / 122 gaps**, and the body says outright that the depot/despatcher/
-spad-source/livery recount "is still owed" — i.e. the document's own author
-states the number has not been fully re-derived. Per the `test-parity` skill
-there is no third state between `ported` and `gap`; an admittedly-unrecomputed
-count is not a third state either, it is 122 open gap rows, full stop, and
-"the recount is owed" is prose describing debt, not a reason to treat any of
-those 122 rows as anything but `gap`. Separately, `.reports/TEST_PARITY.md`
-(a different, older file, generated from an earlier full per-function pass)
-still states **0/148** at the top and is never reconciled against the root
-`TEST_PARITY.md`'s 26/148. Two documents in the same repository claim
-different, both-stated-as-current counts for the same comparison and neither
-says the other exists. A reader who opens one or the other walks away with a
-different number for the same fact, and nothing in the repo resolves which
-one is right.
-
-## Grep results against the skill's literal pattern list, re-run at HEAD `6bb6956`
+## Grep results against the skill's literal pattern list, re-run at HEAD `b3420d6`
 
 ```
 grep -rniE 'TODO|FIXME|not implemented|for now|in a future' lib/ exe/ .reports/ PORTING.md
 ```
 
-One hit, `PORTING.md:71` ("upstream's own TODO"), already covered under
-Finding 1. Zero hits in `lib/` or `exe/`. The violations that matter are
-structural — a heading that presents undone work as settled architecture, and
-two ledgers quietly disagreeing about the same number — not scattered inline
-comments.
+Zero hits in `lib/` or `exe/`, unchanged. One hit, `PORTING.md:71`
+("upstream's own TODO"), already covered under Finding 1.
 
 ## Conclusion
 
-Not clean. The headline finding has not changed, only sharpened: the
-org's own skill file documents this exact violation in this exact file, a
-commit explicitly claims to have fixed it, and the diff that commit produced
-shows it did not. That is a false claim of remediation sitting in the git
-history right now, which is a more serious instance of the pattern than the
-original unaddressed note was — it is no longer merely an omission nobody
-checked, it is a stated fix that a one-command diff shows is false. Three of
-the five findings from the prior round (stale ledgers, unpinned fix, undocumented
-prerequisite) are genuinely resolved, which is worth recording plainly so the
-real progress is not lost in the finding above it. The empty spec lane and the
-two-ledgers-disagreeing problem remain, unresolved, at HEAD `6bb6956`.
+Not clean, and the number of live findings went from 1 open+4 resolved last
+round to **4 open** this round — not because the port regressed, but because
+this round's own audit found a second instance of the exact pattern Finding
+1 already named (a document whose summary and detail disagree) in a
+different file, plus new functionality shipped with no test pinning it. The
+headline finding is unchanged: `PORTING.md`'s excuse-headings and false
+claimed fix remain uncorrected three rounds running. The new finding this
+round — `COMPONENT_PARITY.md`'s own internal self-contradiction about the
+`pages` unit — shows this project has a recurring process defect, not a
+one-time lapse: when a commit fixes code and updates a ledger's summary, the
+ledger's own detailed body is not being re-run or reconciled, in either
+direction (overstating gaps here, previously understating them before
+`2b33b04`'s corrections). A reader of either canonical ledger cannot trust
+its detailed sections without independently checking the code, which is
+exactly the condition that makes a green claim unsafe to take at face value.

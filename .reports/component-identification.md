@@ -1,56 +1,66 @@
-# Component identification — console-rb (2026-11-07 audit, re-verified at HEAD `6bb6956`)
+# Component identification — console-rb (2026-11-08 audit, re-verified at HEAD `b3420d6`)
 
 | | |
 |---|---|
-| Upstream | GNOME Console `main` @ `599b703` (= current `origin/main`) |
-| Port | `ruby` @ `6bb6956` (HEAD; was `a5a2eab` at the prior same-day draft) |
-| Prior inventory | `.reports/component-inventory.md`, last substantively edited `a2029bd` (a self-correcting pair of commits: `0839c7a` accidentally replaced it with a thinner survey, `a2029bd` restored the fuller one in the same session) |
+| Upstream | GNOME Console `main` @ `599b703` (= current `origin/main`, unchanged since the last round) |
+| Port | `ruby` @ `b3420d6` (HEAD; was `6bb6956` at the prior round's audit, `3467879` the prior round's report commit) |
+| Prior inventory | `.reports/component-inventory.md`, unchanged this round (`find lib -type f` still 36 files, upstream's shape unchanged) |
 
-## What changed between `a5a2eab` and `6bb6956`
+## What changed between `6bb6956` and `b3420d6`
 
-Four commits: `9ef75ce` (wrote the first round of `.reports/`), `2b33b04`
-("Close window-unit gaps, fix stale ledgers, and pin tab-badge precedence"),
-`0839c7a`+`a2029bd` (inventory edited then restored, net no new content),
-`6bb6956` (test timing fix only, no widget-tree change). None of these add a
-new upstream-facing widget unit and `component-inventory.md`'s content is
-unchanged net of the restore. The component *list* from the prior round still
-holds.
+Four commits since the prior reports were committed: `3f3daab` (drop the
+unusable `libgtop` dependency), `e999d74` (drop the unused `gem_kit` runtime
+dependency), `44db0db` (add the tab context menu, fix the bell/status-icon
+split, bundle `theme-check-symbolic`/`emblem-ok-symbolic`), `b3420d6` (fix a
+test assertion after `44db0db` renamed `Pages#indicator_for` to
+`#status_icon_for`). `git diff --stat 3467879..HEAD` touches
+`COMPONENT_PARITY.md`, `FINDINGS.md`, `console-rb.gemspec`, `flake.nix`,
+`lib/console_rb/{pages,process_info,spad,tab,theme_switcher}.rb`,
+`nix/{Gemfile,Gemfile.lock,gemset.nix}` and `test/services_test.rb`. None of
+these add a new upstream-facing widget unit, remove one, or change which
+upstream source file maps to which `lib/` file — the component *list* from
+the prior round still holds exactly.
 
-## What upstream actually ships (re-confirmed directly against `origin/main`)
+## What upstream actually ships (re-confirmed directly against `origin/main`, unchanged)
 
 ```
 git ls-tree -r --name-only origin/main
 ```
 
-1 application, 1 window + `.ui`, 1 tab-collection (`kgx-pages`), 2 tab types
-(`kgx-tab` + `kgx-simple-tab`), 1 terminal, 1 settings object, 3 livery files,
-3 process files (train/watcher/process), 1 close dialog, 1 paste dialog, 1
-empty state, 1 theme switcher, 1 fullscreen box, 1 drop target, 1 preferences
-window, 1 font picker, 1 spad + spad-source, 1 system-info/about, 1
-proxy-info, 1 shortcuts dialog (`.ui` only), `src/main.c`. `data/`: desktop
-file, gschema, metainfo, 8 symbolic icons. `po/`: 61 `.po` files + `LINGUAS` +
+Same inventory as the prior round, re-confirmed: 1 application, 1 window +
+`.ui`, 1 tab-collection (`kgx-pages`), 2 tab types (`kgx-tab` +
+`kgx-simple-tab`), 1 terminal, 1 settings object, 3 livery files, 3 process
+files (train/watcher/process), 1 close dialog, 1 paste dialog, 1 empty state,
+1 theme switcher, 1 fullscreen box, 1 drop target, 1 preferences window, 1
+font picker, 1 spad + spad-source, 1 system-info/about, 1 proxy-info, 1
+shortcuts dialog (`.ui` only), `src/main.c`. `data/`: desktop file, gschema,
+metainfo, 8 symbolic icons. `po/`: 61 `.po` files + `LINGUAS` +
 `POTFILES.in`. `tests/`: 21 test files.
 
-The port's `lib/console_rb/*.rb` has 36 files (confirmed by `find lib -type
-f | wc -l` at HEAD), matching the inventory's claimed 21 user-facing + 15
-infrastructure/model split.
+`origin/main` itself is unchanged since the prior round (`599b703`, same SHA
+both times — re-confirmed with `git log origin/main -1`), so this is not a
+re-derivation, it is a re-confirmation that nothing moved on the upstream
+side between rounds.
 
-## Standing gap, unchanged since the prior round: the paste dialog is now scored, everything else about it stands
+## Identification is not the live gap this round — a documentation-sync gap is
 
-The prior round's finding that the paste dialog (`kgx-paste-dialog.c` →
-`lib/console_rb/paste_dialog.rb`) had never been entered as a row in any
-parity ledger **is resolved** — `COMPONENT_PARITY.md` now carries it as unit
-13 (scored `gap`, see `.reports/component-parity.md`). The identification gap
-itself is closed; whether the dialog actually has parity is a separate
-question, answered there.
+Everything this report would normally flag (a widget that exists upstream
+with no `lib/` counterpart, or a `lib/` file claiming to port something that
+doesn't exist upstream) is unchanged from the prior round and already
+tracked in `component-parity.md`. The one thing that *did* change on the
+identification side this round is that the canonical ledger's own
+self-description of the `pages` unit is now wrong in a way worth naming here
+because it is about whether the ledger still correctly identifies what each
+unit does and doesn't have — see `.reports/component-parity.md`'s new
+"Ledger self-contradiction" section. That is a parity-ledger accuracy
+finding, not a missing-component finding, so it is scored there, not here.
 
 ## Conclusion
 
-The component list is substantially right and has been for several rounds;
-the inventory document survived an accidental regression and restore with no
-net content loss. No new upstream-facing component was found this round that
-isn't already named in `component-inventory.md` or `COMPONENT_PARITY.md`'s
-13-unit table. Identification itself is in reasonable shape; the open
-questions from here on are all parity questions (does each identified
-component match on all four axes), not identification questions (does a
-component exist that nobody named) — see `.reports/component-parity.md`.
+No new upstream-facing component was found this round that isn't already
+named in `component-inventory.md` or `COMPONENT_PARITY.md`'s 13-unit table,
+and none disappeared. Identification itself remains in reasonable shape at
+the "does every upstream unit have a named Ruby counterpart" level. The live
+findings this round are all parity findings (does each identified component
+still match on all four axes, and does the ledger's own prose match the
+code) — see `.reports/component-parity.md`.
