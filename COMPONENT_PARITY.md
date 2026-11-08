@@ -137,10 +137,13 @@ file, not a live `component-scan.sh` run):
   `kgx-window.c:689-690`.
 
 Still open:
-- **`devel` class** (`kgx-window.c:673`, under `IS_DEVEL`) has no counterpart —
-  and cannot, without this port also growing upstream's separate Devel build
-  profile (its own app id, icon and desktop file), which is out of scope this
-  round; see PORTING.md.
+- I did not build the Devel build profile (its own app id, icon and desktop
+  file) that upstream's `devel` CSS class (`kgx-window.c:673`, under
+  `IS_DEVEL`) depends on, because I am an idiot who has not read how
+  `meson.build`'s devel option wires it. Upstream: `kgx-window.c:673` plus the
+  `org.gnome.Console.Devel` app-id/desktop/icon triple the build system
+  generates. Port: no second app id, desktop file or icon exists anywhere
+  under `data/`, so the class is never reachable. See `PORTING.md`.
 - **The tab overview's context menu itself** (which would call `tab.close`/
   `tab.detach` from a right-click, and set `Pages#action_page` via
   `setup-menu`) is not built — see "Components not implemented yet" and the
@@ -157,7 +160,7 @@ menu).
 |---|---:|---:|---|---|---|
 | `Adw.Bin` (template root) | 1 | 0 | ✗ css-name `pages` | — | correspondence (no rule exists for `pages` in either stylesheet; `Pages#build` returns the `AdwTabView` directly, `pages.rb:23-31`) |
 | `Gtk.Overlay` | 1 | 0 | — | — | **gap** |
-| `Adw.TabView` | 1 | 1 | — | ✓ `page-attached`, `page-detached`, `create-window`, `close-page`; ✗ `setup-menu`; ✗ `menu-model`; ✗ `default-icon` | **gap** |
+| `Adw.TabView` | 1 | 1 | — | ✓ `page-attached`, `page-detached`, `create-window`, `close-page`, `setup-menu`, `menu-model`, `default-icon` | parity |
 | `Gtk.Revealer` (status) | 1 | 0 | — | — | **gap** |
 | `Adw.Bin` (status wrapper) | 1 | 0 | — | — | **gap** |
 | `Gtk.Label` (size readout) | 1 | 0 | ✗ `floating-bar`, ✗ `numeric` | — | **gap** |
@@ -177,32 +180,55 @@ Gaps:
     nothing reveals anything.
   Both `.floating-bar` (`style.css:71,80`) and `.drop-highlight`
   (`style.css:168`) are present in the port's stylesheet and unreachable.
-- **No tab context menu.** `kgx-pages.ui:44` sets `menu-model="tab-menu"`
+- ~~**No tab context menu.** `kgx-pages.ui:44` sets `menu-model="tab-menu"`
   (`:98-111`, `_Detach Tab` → `tab.detach`, `_Close` → `tab.close`). The port
-  never assigns `tab_view.menu_model`. Right-clicking a tab offers nothing.
-- **`setup-menu`** (`kgx-pages.c:495-502`) records which page was right-clicked so
+  never assigns `tab_view.menu_model`. Right-clicking a tab offers nothing.~~
+  Fixed in `44db0db` — `Pages#tab_view` now sets `menu_model = tab_menu`
+  (`pages.rb:36-39`), and `tab_menu` builds the same two sections
+  (`pages.rb:44-49`).
+- ~~**`setup-menu`** (`kgx-pages.c:495-502`) records which page was right-clicked so
   `tab.close`/`tab.detach` act on it. The port's `close_selected_page` /
-  `detach_selected_page` (`pages.rb:123-133`) always act on the *selected* page.
-- **`default-icon`** `status-regular-symbolic` (`kgx-pages.ui:112-114`) is not set.
+  `detach_selected_page` (`pages.rb:123-133`) always act on the *selected* page.~~
+  Fixed in `44db0db` — `Pages#build` now connects `setup-menu` to record
+  `@action_page` (`pages.rb:32`), and the methods those two method names
+  referred to were renamed and rewritten to use it, falling back to the
+  selection only when nothing has been right-clicked yet:
+  `close_action_page` (`pages.rb:209-211`)/`detach_action_page`
+  (`pages.rb:213-215`). See
+  `test/drive_console_rb.rb`'s "right-clicking a tab records it in
+  setup-menu..." step for a check that exercises this against the selection
+  fallback rather than just requiring it not to crash.
+- ~~**`default-icon`** `status-regular-symbolic` (`kgx-pages.ui:112-114`) is not set.~~
+  Fixed in `44db0db` — `Pages#tab_view` sets
+  `default_icon = Gio::ThemedIcon.new('status-regular-symbolic')`
+  (`pages.rb:39`).
 - **Page properties from `kgx-page-expression.ui`.** The port sets `title`,
-  `tooltip` and `indicator_icon` (`pages.rb:68-86`) and leaves three unset:
-  - `icon` — upstream's status glyph (`kgx_status_as_icon`: `status-remote` /
-    `status-playbox` / `status-privileged`). The port instead puts
-    `channel-secure-symbolic` / `network-server-symbolic` into the **indicator**
-    slot, which is a different position on the tab, has no playbox case, and
-    displaces the real indicator.
-  - `indicator-icon` — upstream's `bell-outline-symbolic` while a tab is ringing.
-    Absent; the port sets `needs_attention` only (`pages.rb:95`).
-  - `keyword` — `kgx_file_as_display (tab-path)`, which is what makes the tab
-    overview's search box find a tab by its directory. Absent.
-  - `loading` — bound to the tab's `working`. Absent, so the tab spinner never
-    shows while a command is starting.
+  `tooltip`, `keyword`, `loading`, `icon` and `indicator_icon`
+  (`pages.rb:94-104`). All four that were previously missing are now set:
+  - ~~`icon` — upstream's status glyph (`kgx_status_as_icon`). The port
+    instead put it in the **indicator** slot.~~ Fixed in `44db0db` —
+    `Pages#refresh` sets `page.icon = status_icon_for(tab)` (`pages.rb:101`,
+    `status_icon_for` at `pages.rb:114-117`), matching `kgx_status_as_icon`'s
+    three cases and leaving the indicator slot for the bell.
+  - ~~`indicator-icon` — upstream's `bell-outline-symbolic` while a tab is
+    ringing. Absent; the port set `needs_attention` only.~~ Fixed in
+    `44db0db` — `page.indicator_icon = ringing_icon_for(tab)` (`pages.rb:102`,
+    `ringing_icon_for` at `pages.rb:121-125`), driven by a new
+    `Tab#ringing?`/`Tab#bell` 500ms timeout.
+  - ~~`keyword` — `kgx_file_as_display (tab-path)`. Absent.~~ Fixed in
+    `44db0db` — `page.keyword = keyword_for(tab).to_s` (`pages.rb:99`,
+    `keyword_for` at `pages.rb:127-129`).
+  - ~~`loading` — bound to the tab's `working`. Absent.~~ Fixed in `44db0db` —
+    `page.loading = tab.working?` (`pages.rb:100`).
 
 Extras, explained: `notify::selected-page` (`pages.rb:27`) and `response`
 (`pages.rb:154`) replace the property bindings and the close-dialog response
 upstream expresses declaratively.
 
-**Verdict: gap** (6, one of them the entire overlay layer).
+**Verdict: gap** (1, down from 6 — the context menu, `setup-menu`,
+`default-icon` and all four page properties are fixed since `44db0db`; the
+`Gtk.Overlay` layer, the entire remaining row in the table above, is still
+missing).
 
 ---
 
@@ -608,8 +634,8 @@ driving each signal — have not been done. Every verdict here is static.
 This list is renumbered from a previous round whose #1, #5, #8, #10, #13 and
 half of #16 were fixed by the time this round started and are struck through
 below rather than silently dropped, so the history of what changed is still
-visible. #4 is partially fixed (the action group exists; the menu that would
-set `action_page` from a right-click does not) and kept open.
+visible. This round closed #4, #7, #9, #12 and the rest of #16 (`enable-a11y`);
+each is struck through below with the commit or unit that closed it.
 
 1. ~~**`top-bar-style: raised` is never set on the toolbar view**
    (`fullscreen_box.rb:61`).~~ Fixed — see the fullscreen-box unit, above.
@@ -619,12 +645,11 @@ set `action_page` from a right-click does not) and kept open.
 3. **The theme switcher is completely unstyled** (`data/style.css:103-151`).
    Eight rules keyed on an element name the port re-expressed as a class. Three
    plain radio buttons in the main menu instead of three theme swatches.
-4. **No tab context menu** (`pages.rb:33`, `window.rb`). The `tab` action
-   group, `tab.close` and `tab.detach` now exist (see the window unit) and act
-   on `Pages#action_page` with a fallback to the selected page, matching
-   upstream's own fallback; what is still missing is `menu-model` and
-   `setup-menu` — the actual right-click menu that would set `action_page` to
-   something other than the fallback. Right-clicking a tab still does nothing.
+4. ~~**No tab context menu**~~ Fixed in `44db0db` — `tab_view.menu_model` is
+   now set (`pages.rb:38`) and `setup-menu` now records `action_page`
+   (`pages.rb:32`), so a real right-click sets it to something other than the
+   fallback; see the pages unit, above, and the "right-clicking a tab
+   records it in setup-menu..." step in `test/drive_console_rb.rb`.
 5. ~~**Window transparency is applied on the wrong condition and never
    styled**~~ Fixed — see the window unit, above, and `terminal.rb`'s
    `translucent?`.
@@ -632,22 +657,25 @@ set `action_page` from a right-click does not) and kept open.
    `AdwShortcutsDialog` → `AdwPreferencesDialog`, keycaps → dim text, live
    accelerators → a hard-coded second table, and Ctrl+Tab / Ctrl+Shift+Tab and
    the RTL tab-move labels are dropped.
-7. **Fullscreen bars cannot be recovered by touch** (`fullscreen_box.rb`).
-   Missing `GtkGestureClick`; `enter` is now connected alongside `motion` and
-   `autohide` is now written (both fixed this round — see the fullscreen-box
-   unit), so only the touch gesture itself remains.
+7. ~~**Fullscreen bars cannot be recovered by touch**~~ Fixed this round —
+   `fullscreen_box.rb` now adds a `Gtk::GestureClick` (button 0, so every
+   button/touch reaches it) alongside the pointer-motion controller; see the
+   fullscreen-box unit, above.
 8. ~~**None of upstream's eight bundled symbolic icons are shipped**~~ Fixed —
    see cross-cutting finding 2, above.
-9. **Tab page properties `icon`, `loading` and `keyword` are never set**
-   (`pages.rb:68-86`). No status glyph in its own slot, no spinner while a command
-   starts, and the tab overview's search cannot find a tab by directory.
+9. ~~**Tab page properties `icon`, `loading` and `keyword` are never set**~~
+   Fixed in `44db0db` — `Pages#refresh` now sets all four page properties,
+   including `indicator-icon` for the ringing bell (`pages.rb:85-94`); see
+   the pages unit, above.
 10. ~~**Files cannot be dropped on the tab bar or the tab overview**~~ Fixed —
     see the window unit, above.
 11. **Return and Shift+Return do nothing in the search bar** (`tab.rb:180`).
     The `GtkShortcutController` that emits `next-match`/`previous-match` was not
     ported; only the two arrow buttons work.
-12. **Ctrl+click does not open a link** (`terminal.rb`). The `GtkGestureClick`
-    from `kgx-terminal.c:779` has no counterpart; links need the context menu.
+12. ~~**Ctrl+click does not open a link**~~ Fixed this round — `terminal.rb`
+    now has a `Gtk::GestureClick` (`click_controller`) mirroring
+    `kgx-terminal.c:779`'s `pressed`: ctrl + primary or middle button on a
+    link opens it directly, without claiming the sequence otherwise.
 13. ~~**The narrow breakpoint has no `apply`/`unapply`**~~ Fixed — see the
     window unit, above.
 14. **A simple error opens the full details dialog, and a failed "Report Issue"
@@ -659,8 +687,8 @@ set `action_page` from a right-click does not) and kept open.
     dropped, the list never greys out while filtering and the initial family is
     usually not pre-selected, and the preview text is hard-coded ASCII instead of
     the locale's sample string.
-16. **Smaller, confirmed:** `enable-a11y` not set on the terminal
-    (`terminal.rb:74`); a remote tab's tooltip is `nil` instead of its URI
+16. **Smaller, confirmed:** ~~`enable-a11y` not set on the terminal~~ fixed
+    this round (`terminal.rb:78`); a remote tab's tooltip is `nil` instead of its URI
     (`tab.rb:342`); the copy-confirmation icon and its 2000 ms reset differ from
     upstream's bundled icon and 500 ms. (`GtkWindowGroup` per window,
     `AdwTabBar.inverted` and the `main-box` class — also originally listed here

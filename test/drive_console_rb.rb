@@ -153,6 +153,32 @@ GtkDriver.drive(ConsoleRb::Application.new, shots: SHOTS, startup_delay_ms: 1200
     d.shot('02-two-tabs')
   end
 
+  d.step('right-clicking a tab records it in setup-menu and acts on it, not the selection') do
+    pages = app.window.pages
+    first_tab, second_tab = pages.tabs
+    d.check('the second tab is the selection') { pages.selected_tab.equal?(second_tab) }
+
+    # AdwTabView emits `setup-menu` with the page the context menu is being
+    # opened against immediately before showing it — a real right-click on
+    # the first (unselected) tab looks exactly like this from the outside.
+    pages.tab_view.signal_emit('setup-menu', pages.page_for(first_tab))
+
+    app.window.tab_actions.lookup_action('detach').activate(nil)
+    pump(300)
+    d.check('the right-clicked tab detached, not the selected one') { app.windows.length == 2 }
+    d.check('the selected tab is still in this window') { pages.tabs.include?(second_tab) }
+    d.check('the right-clicked tab is gone from this window') { !pages.tabs.include?(first_tab) }
+
+    app.windows.last.window.destroy
+    d.check('back to one window') { app.windows.one? }
+
+    # The detach above is real, not a dry run, so it leaves this window with
+    # one tab rather than two — restore the count the steps after this one
+    # still assume, the same way opening a second tab normally would.
+    app.window.actions.lookup_action('new-tab').activate(nil)
+    d.check('a replacement tab brings the count back to two') { pages.tab_count == 2 }
+  end
+
   d.step('win.new-window opens a second, independent window') do
     app.window.actions.lookup_action('new-window').activate(nil)
     d.check('two windows now') { app.windows.length == 2 }
@@ -162,6 +188,19 @@ GtkDriver.drive(ConsoleRb::Application.new, shots: SHOTS, startup_delay_ms: 1200
   end
 
   d.step('closing the second window is forgotten by the application') do
+    app.windows.last.window.destroy
+    d.check('back to one window') { app.windows.one? }
+  end
+
+  d.step('tearing a tab off onto the desktop produces a real second window') do
+    # AdwTabView emits `create-window` itself, with no further arguments,
+    # exactly this once, when a drag-to-desktop tear-off completes — so
+    # emitting it here drives the real signal path end to end rather than
+    # trusting that `on_create_tearoff_host` is wired correctly.
+    new_tab_view = app.window.pages.tab_view.signal_emit('create-window')
+    d.check('a real Adwaita::TabView came back') { new_tab_view.is_a?(Adwaita::TabView) }
+    d.check('it is not the original window\'s tab view') { !new_tab_view.equal?(app.window.pages.tab_view) }
+    d.check('a second top-level window now exists') { app.windows.length == 2 }
     app.windows.last.window.destroy
     d.check('back to one window') { app.windows.one? }
   end

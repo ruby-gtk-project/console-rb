@@ -67,6 +67,15 @@ module ConsoleRb
       end
     end
 
+    # AdwTabView's `create-window` fires when a drag-to-desktop tear-off
+    # completes and wants a destination AdwTabView for the dropped page; it
+    # is a plain return value from the signal, not a page/tab move (that part
+    # is `AdwTabView#transfer_page`, which GTK calls itself once this
+    # returns). `@on_create_tearoff_host` opens a real new window and hands
+    # back its `Pages`, so this unwraps that to the `Adwaita::TabView` the
+    # signal actually wants back.
+    def create_tearoff_host = @on_create_tearoff_host.call.tab_view
+
     def tab_for(page) = page && @tabs.dig(page.child, :tab)
 
     def page_for(tab) = @tabs.dig(tab.root, :page)
@@ -169,8 +178,30 @@ module ConsoleRb
       page_for(tab)&.then do |page|
         @on_create_tearoff_host.call.then do |host|
           tab_view.transfer_page(page, host.tab_view, 0)
+          # `transfer_page` only moves the `AdwTabPage` at the GTK level; it
+          # knows nothing of this class's own `@tabs` bookkeeping on either
+          # side. Left alone, the old window kept thinking it still owned a
+          # tab that had physically moved to a different `AdwTabView`, and
+          # the new window never learned the moved tab existed at all, so its
+          # `refresh`/bell/search-change callbacks kept firing back into the
+          # window that no longer displays it.
+          @tabs.delete(page.child)
+          host.adopt(tab, page)
         end
       end
+    end
+
+    # The far side of `detach_page`: re-registers a tab that
+    # `AdwTabView#transfer_page` has just reparented into this window's own
+    # tab view, doing everything `#add` does except build, start or append
+    # it — all of which already happened in the tab's original window.
+    def adopt(tab, page)
+      @tabs[page.child] = { tab: tab, page: page }
+      tab.on_change { refresh(tab) }
+      tab.on_bell = -> { rang(tab, page) }
+      tab.on_search_change = ->(enabled) { @on_search_change.call(enabled) }
+      tab.on_died = ->(dead, should_close) { tab_died(dead, should_close) }
+      refresh(tab)
     end
 
     # kgx_pages_close_page / kgx_pages_detach_page: act on `action_page`,

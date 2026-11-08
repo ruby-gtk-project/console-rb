@@ -50,6 +50,7 @@ module ConsoleRb
         term.context_menu_model = context_menu
         term.add_controller(shortcuts)
         term.add_controller(scroll_controller)
+        term.add_controller(click_controller)
 
         add_link_matchers
         connect_zoom
@@ -78,6 +79,7 @@ module ConsoleRb
         term.enable_fallback_scrolling = false
         term.scroll_unit_is_pixels = true
         term.has_tooltip = true
+        term.enable_a11y = true
       end
     end
 
@@ -106,6 +108,16 @@ module ConsoleRb
     def scroll_controller
       @scroll_controller ||= Gtk::EventControllerScroll.new(%i[vertical discrete]).tap do |controller|
         controller.propagation_phase = :capture
+      end
+    end
+
+    # Ctrl+primary-click (or middle-click) on a link opens it directly, without
+    # going through the context menu — upstream's `pressed` on a plain
+    # GtkGestureClick (button 0, so any button reaches it).
+    def click_controller
+      @click_controller ||= Gtk::GestureClick.new.tap do |gesture|
+        gesture.button = 0
+        gesture.signal_connect('pressed') { |g, n_press, x, y| handle_click(g, n_press, x, y) }
       end
     end
 
@@ -212,6 +224,25 @@ module ConsoleRb
       end
     rescue StandardError
       nil
+    end
+
+    # Primary and middle button are GDK_BUTTON_PRIMARY (1) and
+    # GDK_BUTTON_MIDDLE (2), matching upstream's `pressed`.
+    CTRL_CLICK_BUTTONS = [1, 2].freeze
+
+    def handle_click(gesture, n_press, x, y)
+      if n_press > 1
+        gesture.set_state(:denied)
+      else
+        url = terminal.check_match_at(x, y)&.first
+        if url && CTRL_CLICK_BUTTONS.include?(gesture.current_button) &&
+           gesture.current_event_state.control_mask?
+          launch(url)
+          gesture.set_state(:claimed)
+        else
+          gesture.set_state(:denied)
+        end
+      end
     end
 
     def refresh_action_state

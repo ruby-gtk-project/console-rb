@@ -10,15 +10,18 @@ module ConsoleRb
     def initialize
       @fullscreen = false
       @autohide = true
+      @is_touch = false
     end
 
     def build
       toolbar_view.tap do |view|
         view.add_controller(motion)
+        view.add_controller(touch)
 
         motion.signal_connect('motion') { |_controller, _x, y| pointer_moved(y) }
         motion.signal_connect('enter') { |_controller, _x, y| pointer_moved(y) }
         motion.signal_connect('leave') { schedule_hide }
+        touch.signal_connect('pressed') { |gesture, _n_press, _x, y| touch_pressed(gesture, y) }
       end
     end
 
@@ -38,9 +41,23 @@ module ConsoleRb
     attr_writer :autohide
 
     def pointer_moved(y)
+      @is_touch = false
       return_to_hidden = @fullscreen && @autohide
       toolbar_view.reveal_top_bars = true if return_to_hidden && y <= reveal_threshold
       schedule_hide if return_to_hidden && y > reveal_threshold
+    end
+
+    # Touch devices never fire the motion controller above, so fullscreen
+    # header bars could never be recovered or re-hidden by touch — upstream's
+    # `pressed` on a plain GtkGestureClick (button 0, every button reaches it)
+    # fills the same role: it never claims the sequence, so the tap still
+    # reaches whatever is underneath, and it only schedules a hide when the
+    # tap lands below the titlebar area, leaving a tap on a shown header bar
+    # alone.
+    def touch_pressed(gesture, y)
+      gesture.set_state(:denied)
+      @is_touch = true
+      schedule_hide if @fullscreen && @autohide && y > reveal_threshold
     end
 
     def reveal_threshold
@@ -72,5 +89,11 @@ module ConsoleRb
     end
 
     def motion = @motion ||= Gtk::EventControllerMotion.new
+
+    def touch
+      @touch ||= Gtk::GestureClick.new.tap do |gesture|
+        gesture.button = 0
+      end
+    end
   end
 end
