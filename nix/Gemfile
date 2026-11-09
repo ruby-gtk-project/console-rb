@@ -9,14 +9,7 @@
 source "https://rubygems.org"
 
 gem "adwaita"
+gem "gettext"
+gem "glib2"
 gem "gtk4"
 gem "vte4"
-
-# NOTE: `libgtop` used to be declared here too, for the per-process
-# statistics the tab headers show. Its functions are not callable from Ruby
-# at all (FINDINGS.md #17), so the dependency was removed rather than kept
-# declared and unused; lib/console_rb/process_info.rb reads /proc directly
-# instead.
-
-# Translation lookup shares GNOME Console's own gettext catalogue.
-gem "gettext"
